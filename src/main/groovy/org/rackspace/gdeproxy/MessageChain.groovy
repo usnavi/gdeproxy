@@ -1,4 +1,4 @@
-package org.gdeproxy
+package org.rackspace.gdeproxy
 
 /**
  *  An object containing the initial request sent via the make_request method,

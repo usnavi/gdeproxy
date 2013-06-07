@@ -1,4 +1,4 @@
-package org.gdeproxy
+package org.rackspace.gdeproxy
 
 /**
  * A simple HTTP Request, with method, path, headers, and body.

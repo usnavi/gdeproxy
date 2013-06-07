@@ -1,5 +1,5 @@
 
-package org.gdeproxy;
+package org.rackspace.gdeproxy;
 
 import java.io.BufferedReader;
 import java.io.IOException;

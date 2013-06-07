@@ -1,4 +1,4 @@
-package org.gdeproxy
+package org.rackspace.gdeproxy
 
 import org.apache.http.Header
 

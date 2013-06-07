@@ -1,4 +1,4 @@
-package org.gdeproxy
+package org.rackspace.gdeproxy
 
 /**
  * An object representing a request received by an endpoint and the

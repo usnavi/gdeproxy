@@ -1,4 +1,4 @@
-package org.gdeproxy
+package org.rackspace.gdeproxy
 
 /**
  * A class that acts as a mock HTTP server.
