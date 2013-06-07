@@ -3,17 +3,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!--<parent>-->
-        <!--<groupId>com.rackspace.papi</groupId>-->
-        <!--<artifactId>papi</artifactId>-->
-        <!--<version>2.7.1-SNAPSHOT</version>-->
-    <!--</parent>-->
-
-    <groupId>com.rackspace.papi</groupId>
-    <artifactId>repose-spock-tests</artifactId>
+    <groupId>org.rackspace</groupId>
+    <artifactId>gdeproxy</artifactId>
     <version>1.0-SNAPSHOT</version>
 
-    <name>Repose Tests - Spock Functional Tests</name>
+    <name>GDeproxy</name>
 
     <packaging>jar</packaging>
 
@@ -25,7 +19,6 @@
 
 
     <dependencies>
-        <!-- We like Spock, test long and prosper -->
         <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy-all</artifactId>
@@ -38,7 +31,6 @@
             <version>${spock.version}</version>
             <scope>test</scope>
         </dependency>
-
 
         <dependency>
             <groupId>commons-io</groupId>
@@ -62,85 +54,9 @@
             <scope>test</scope>
         </dependency>
 
-
     </dependencies>
 
-    <profiles>
-        <profile>
-            <id>spock-local</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-
-                <project.set.dir>${project.basedir}/../../project-set</project.set.dir>
-
-                <repose.valve.dir>${project.set.dir}/core/valve/target</repose.valve.dir>
-                <filter.dir>${project.set.dir}/components/filter-bundle/target</filter.dir>
-                <filter.extensions.dir>${project.set.dir}/extensions/extensions-filter-bundle/target</filter.extensions.dir>
-
-                <repose.valve.jar>repose-valve.jar</repose.valve.jar>
-                <filter.ear>filter-bundle-*.ear</filter.ear>
-                <filter.extensions.ear>extensions-filter-bundle-*.ear</filter.extensions.ear>
-
-                <repose_port>8888</repose_port>
-                <repose_jmx_port>9001</repose_jmx_port>
-                <repose_shutdown_port>9999</repose_shutdown_port>
-                <target_hostname>localhost</target_hostname>
-                <target_port>10001</target_port>
-
-
-                <repose.home>${project.build.directory}/repose_home</repose.home>
-                <repose.config.directory>${repose.home}/configs</repose.config.directory>
-                <repose.valve.jar.location>${repose.home}/${repose.valve.jar}</repose.valve.jar.location>
-                <repose.config.samples>${project.build.directory}/configs</repose.config.samples>
-            </properties>
-        </profile>
-    </profiles>
-
-
-
     <build>
-        <testResources>
-
-
-            <testResource>
-                <directory>${project.basedir}/src/test/resources</directory>
-                <filtering>true</filtering>
-                <targetPath>${project.build.directory}/test-classes</targetPath>
-            </testResource>
-
-            <testResource>
-                <directory>${project.basedir}/src/test/configs</directory>
-                <filtering>true</filtering>
-                <targetPath>${project.build.directory}/configs</targetPath>
-            </testResource>
-
-            <testResource>
-                <directory>${filter.dir}</directory>
-                <includes>
-                    <include>${filter.ear}</include>
-                </includes>
-                <targetPath>${project.build.directory}/repose_home/artifacts</targetPath>
-            </testResource>
-            <testResource>
-                <directory>${filter.extensions.dir}</directory>
-                <includes>
-                    <include>${filter.extensions.ear}</include>
-                </includes>
-                <targetPath>${project.build.directory}/repose_home/artifacts</targetPath>
-            </testResource>
-            <testResource>
-                <directory>${repose.valve.dir}</directory>
-                <includes>
-                    <include>${repose.valve.jar}</include>
-                </includes>
-                <targetPath>${project.build.directory}/repose_home</targetPath>
-            </testResource>
-
-        </testResources>
-
-
         <plugins>
             <plugin>
                 <groupId>org.codehaus.gmaven</groupId>
