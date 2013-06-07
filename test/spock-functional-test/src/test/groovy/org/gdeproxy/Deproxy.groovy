@@ -18,27 +18,58 @@ class Deproxy {
 
 }
 
+//class Deproxy:
+//    """The main class."""
+//
+//    def __init__(self, default_handler=None):
+//        """
+//Params:
+//default_handler - An optional handler function to use for requests, if
+//not specified elsewhere
+//"""
+//        self._message_chains_lock = threading.Lock()
+//        self._message_chains = dict()
+//        self._endpoint_lock = threading.Lock()
+//        self._endpoints = []
+//        self.default_handler = default_handler
+//
 //    def make_request(self, url, method='GET', headers=None, request_body='',
-//                     handler_function=default_handler,
+//                     default_handler=None, handlers=None,
 //                     add_default_headers=True):
-//        """Make an HTTP request to the given url and return a MessageChain."""
+//        """
+//Make an HTTP request to the given url and return a MessageChain.
+//
+//Parameters:
+//
+//url - The URL to send the client request to
+//method - The HTTP method to use, default is 'GET'
+//headers - A collection of request headers to send, defaults to None
+//request_body - The body of the request, as a string, defaults to empty
+//string
+//default_handler - An optional handler function to use for requests
+//related to this client request
+//handlers - A mapping object that maps endpoint references or names of
+//endpoints to handlers. If an endpoint or its name is a key within
+//``handlers``, all requests to that endpoint will be handled by the
+//associated handler
+//add_default_headers - If true, the 'Host', 'Accept', 'Accept-Encoding',
+//and 'User-Agent' headers will be added to the list of headers sent,
+//if not already specified in the ``headers`` parameter above.
+//Otherwise, those headers are not added. Defaults to True.
+//"""
 //        logger.debug('')
 //
 //        if headers is None:
-//            headers = {}
+//            headers = HeaderCollection()
 //        else:
-//            # if the caller passes in a headers object to specify what http
-//            # headers to send, we need to copy it in order to avoid modifying
-//            # it. Also, if the caller passes in the same object multiple times,
-//            # subsequent calls to try_add_value_case_insensitive wouldn't
-//            # change the values in the dictionary.
-//            headers = dict(headers)
+//            headers = HeaderCollection(headers)
 //
 //        request_id = str(uuid.uuid4())
-//        try_add_value_case_insensitive(headers, request_id_header_name,
-//                                       request_id)
+//        if request_id_header_name not in headers:
+//            headers.add(request_id_header_name, request_id)
 //
-//        message_chain = MessageChain(handler_function)
+//        message_chain = MessageChain(default_handler=default_handler,
+//                                     handlers=handlers)
 //        self.add_message_chain(request_id, message_chain)
 //
 //        urlparts = list(urlparse.urlsplit(url, 'http'))
@@ -48,13 +79,20 @@ class Deproxy {
 //        urlparts[1] = ''
 //        path = urlparse.urlunsplit(urlparts)
 //
+//        logger.debug('request_body: "{0}"'.format(request_body))
+//        if len(request_body) > 0:
+//            headers.add('Content-Length', len(request_body))
+//
 //        if add_default_headers:
-//            try_add_value_case_insensitive(headers, 'Host', host)
-//            try_add_value_case_insensitive(headers, 'Accept', '*/*')
-//            try_add_value_case_insensitive(headers, 'Accept-Encoding',
-//                                           'identity, deflate, compress, gzip')
-//            try_add_value_case_insensitive(headers, 'User-Agent',
-//                                           version_string)
+//            if 'Host' not in headers:
+//                headers.add('Host', host)
+//            if 'Accept' not in headers:
+//                headers.add('Accept', '*/*')
+//            if 'Accept-Encoding' not in headers:
+//                headers.add('Accept-Encoding',
+//                            'identity, deflate, compress, gzip')
+//            if 'User-Agent' not in headers:
+//                headers.add('User-Agent', version_string)
 //
 //        request = Request(method, path, headers, request_body)
 //
@@ -66,6 +104,51 @@ class Deproxy {
 //        message_chain.received_response = response
 //
 //        return message_chain
+//
+//    def create_ssl_connection(self, address,
+//                              timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+//                              source_address=None):
+//        """
+//Copied from the socket module and modified for ssl support.
+//
+//Connect to *address* and return the socket object.
+//
+//Convenience function. Connect to *address* (a 2-tuple ``(host,
+//port)``) and return the socket object. Passing the optional
+//*timeout* parameter will set the timeout on the socket instance
+//before attempting to connect. If no *timeout* is supplied, the
+//global default timeout setting returned by :func:`getdefaulttimeout`
+//is used. If *source_address* is set it must be a tuple of (host, port)
+//for the socket to bind as a source address before making the
+//connection. A host of '' or port 0 tells the OS to use the default.
+//"""
+//
+//        host, port = address
+//        err = None
+//        for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+//            af, socktype, proto, canonname, sa = res
+//            sock = None
+//            try:
+//                sock = socket.socket(af, socktype, proto)
+//
+//                sock = ssl.wrap_socket(sock)
+//
+//                if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+//                    sock.settimeout(timeout)
+//                if source_address:
+//                    sock.bind(source_address)
+//                sock.connect(sa)
+//                return sock
+//
+//            except socket.error as _:
+//                err = _
+//                if sock is not None:
+//                    sock.close()
+//
+//        if err is not None:
+//            raise err
+//        else:
+//            raise error("getaddrinfo returns an empty list")
 //
 //    def send_request(self, scheme, host, request):
 //        """Send the given request to the host and return the Response."""
@@ -88,16 +171,21 @@ class Deproxy {
 //        for name, value in request.headers.iteritems():
 //            lines.append('%s: %s\r\n' % (name, value))
 //        lines.append('\r\n')
-//        lines.append(request.body)
-//        lines.append('\r\n')
-//        lines.append('\r\n')
+//        if request.body is not None and len(request.body) > 0:
+//            lines.append(request.body)
 //
 //        #for line in lines:
 //        # logger.debug(' ' + line)
 //
 //        logger.debug('Creating connection (hostname="%s", port="%s")' %
 //                     (hostname, str(port)))
-//        s = socket.create_connection((hostname, port))
+//
+//        address = (hostname, port)
+//        if scheme == 'https':
+//            s = self.create_ssl_connection(address)
+//        else:
+//            s = socket.create_connection(address)
+//
 //        s.send(''.join(lines))
 //
 //        rfile = s.makefile('rb', -1)
@@ -106,6 +194,7 @@ class Deproxy {
 //        response_line = rfile.readline(65537)
 //        if (len(response_line) > 65536):
 //            raise ValueError
+//        response_line = response_line.rstrip('\r\n')
 //        logger.debug('Response line is ok: %s' % response_line)
 //
 //        words = response_line.split()
@@ -115,25 +204,44 @@ class Deproxy {
 //        message = ' '.join(words[2:])
 //
 //        logger.debug('Reading headers')
-//        response_headers = dict(mimetools.Message(rfile, 0))
+//        response_headers = HeaderCollection.from_stream(rfile)
 //        logger.debug('Headers ok')
+//        for k,v in response_headers.iteritems():
+//            logger.debug(' %s: %s', k, v)
+//
+//        logger.debug('Reading body')
+//        body = read_body_from_stream(rfile, response_headers)
 //
 //        logger.debug('Creating Response object')
-//        response = Response(code, message, response_headers, rfile)
+//        response = Response(code, message, response_headers, body)
 //
 //        logger.debug('Returning Response object')
 //        return response
 //
-//    def add_endpoint(self, server_address, name=None):
+//    def add_endpoint(self, port, name=None, hostname=None,
+//                     default_handler=None):
 //        """Add a DeproxyEndpoint object to this Deproxy object's list of
 //endpoints, giving it the specified server address, and then return the
-//endpoint."""
+//endpoint.
+//
+//Params:
+//port - The port on which the new endpoint will listen
+//name - An optional descriptive name for the new endpoint. If None, a
+//suitable default will be generated
+//hostname - The ``hostname`` portion of the address tuple passed to
+//``socket.bind``. If not specified, it defaults to 'localhost'
+//default_handler - An optional handler function to use for requests that
+//the new endpoint will handle, if not specified elsewhere
+//"""
+//
 //        logger.debug('')
 //        endpoint = None
 //        with self._endpoint_lock:
 //            if name is None:
 //                name = 'Endpoint-%i' % len(self._endpoints)
-//            endpoint = DeproxyEndpoint(self, server_address, name)
+//            endpoint = DeproxyEndpoint(self, port=port, name=name,
+//                                       hostname=hostname,
+//                                       default_handler=default_handler)
 //            self._endpoints.append(endpoint)
 //            return endpoint
 //
@@ -190,5 +298,26 @@ class Deproxy {
 //        with self._message_chains_lock:
 //            for mc in self._message_chains.itervalues():
 //                mc.add_orphaned_handling(handling)
+
+
+
+
 //
-//
+//def read_body_from_stream(stream, headers):
+//    if ('Transfer-Encoding' in headers and
+//            headers['Transfer-Encoding'] != 'identity'):
+//        # 2
+//        logger.debug('NotImplementedError - Transfer-Encoding != identity')
+//        raise NotImplementedError
+//    elif 'Content-Length' in headers:
+//        # 3
+//        length = int(headers['Content-Length'])
+//        body = stream.read(length)
+//    elif False:
+//        # multipart/byteranges ?
+//        logger.debug('NotImplementedError - multipart/byteranges')
+//        raise NotImplementedError
+//    else:
+//        # there is no body
+//        body = None
+//    return body
