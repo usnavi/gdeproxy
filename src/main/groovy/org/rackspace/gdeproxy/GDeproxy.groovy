@@ -1,6 +1,6 @@
 package org.rackspace.gdeproxy
 
-import org.gdeproxy.http.SimpleHttpClient
+import org.rackspace.gdeproxy.http.SimpleHttpClient
 
 class GDeproxy extends SimpleHttpClient {
 

@@ -1,6 +1,6 @@
 package framework
 
-import org.gdeproxy.GDeproxy
+import org.rackspace.gdeproxy.GDeproxy
 import framework.client.jmx.JmxClient
 import org.linkedin.util.clock.SystemClock
 

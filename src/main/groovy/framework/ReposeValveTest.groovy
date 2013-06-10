@@ -1,6 +1,6 @@
 package framework
 
-import org.gdeproxy.GDeproxy
+import org.rackspace.gdeproxy.GDeproxy
 import spock.lang.Shared
 import spock.lang.Specification
 
