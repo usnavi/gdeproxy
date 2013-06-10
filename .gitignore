@@ -4,4 +4,13 @@
 *.jar
 *.war
 *.ear
-/target/
+
+
+## IntelliJ IDEA
+*.iml
+*.ipr
+*.iws
+.idea/
+
+target
+*/target
