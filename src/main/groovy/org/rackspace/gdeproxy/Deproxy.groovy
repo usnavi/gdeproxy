@@ -102,41 +102,65 @@ class Deproxy {
     addMessageChain(requestId, messageChain)
     //
     //        urlparts = list(urlparse.urlsplit(url, 'http'))
-    def uri = new URI(url)
-    def scheme = uri.scheme
-    def path = uri.path
     //        scheme = urlparts[0]
     //        host = urlparts[1]
     //        urlparts[0] = ''
     //        urlparts[1] = ''
     //        path = urlparse.urlunsplit(urlparts)
+    def uri = new URI(url)
+    def host = uri.host
+    def scheme = uri.scheme
+    def path = uri.path
     //
     //        logger.debug('request_body: "{0}"'.format(request_body))
     //        if len(request_body) > 0:
-    //            headers.add('Content-Length', len(request_body))
+    if (requestBody == null || requestBody.length() < 1) {
+      //            headers.add('Content-Length', len(request_body))
+      headers.add("Content-Length", requestBody.length().toString())
+    }
     //
     //        if add_default_headers:
-    //            if 'Host' not in headers:
-    //                headers.add('Host', host)
-    //            if 'Accept' not in headers:
-    //                headers.add('Accept', '*/*')
-    //            if 'Accept-Encoding' not in headers:
-    //                headers.add('Accept-Encoding',
-    //                            'identity, deflate, compress, gzip')
-    //            if 'User-Agent' not in headers:
-    //                headers.add('User-Agent', version_string)
-    //
+    if (addDefaultHeaders){
+      //            if 'Host' not in headers:
+      //                headers.add('Host', host)
+      if (!headers.Contains("Host")){
+        headers.add("Host", host)
+      }
+      //            if 'Accept' not in headers:
+      //                headers.add('Accept', '*/*')
+      if (!headers.Contains("Accept")){
+        headers.add("Accept", "*/*")
+      }
+      //            if 'Accept-Encoding' not in headers:
+      //                headers.add('Accept-Encoding',
+      //                            'identity, deflate, compress, gzip')
+      if (!headers.Contains("Accept-Encoding")){
+        headers.add("Accept-Encoding", "identity")
+      }
+      //            if 'User-Agent' not in headers:
+      //                headers.add('User-Agent', version_string)
+      if (!headers.Contains("User-Agent")){
+        headers.add("User-Agent", "TODO: versionString")
+      }
+      //
+    }
     //        request = Request(method, path, headers, request_body)
+    def request = new Request(method, path, headers, requestBody)
     //
     //        response = self.send_request(scheme, host, request)
+    def response = sendRequest(scheme, host, request)
     //
     //        self.remove_message_chain(request_id)
+    removeMessageChain(requestId)
     //
     //        message_chain.sent_request = request
+    messageChain.sentRequest = request
     //        message_chain.received_response = response
+    messageChain.receivedResponse = response
     //
     //        return message_chain
     //
+    return messageChain
   }
 
   Object createSslConnection(Object address, int timeout=30, sourceAddress = null) {
@@ -409,4 +433,4 @@ class Deproxy {
   //        # there is no body
   //        body = None
   //    return body
-}
+  }

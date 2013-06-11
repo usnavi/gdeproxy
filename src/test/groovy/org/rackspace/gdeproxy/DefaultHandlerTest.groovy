@@ -27,7 +27,7 @@ public class DefaultHandlerTest {
   
   @Test
   public void TestDefaultHandler(){
-    mc = _deproxy.makeRequest(String.format("http://localhost:%d/", _port));
+    def mc = _deproxy.makeRequest(String.format("http://localhost:%d/", _port));
     assertEquals(mc.receivedResponse.code, "200");
   }
   
