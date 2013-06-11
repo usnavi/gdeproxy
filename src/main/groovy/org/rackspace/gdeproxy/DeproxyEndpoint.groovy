@@ -26,7 +26,7 @@ class DeproxyEndpoint {
     GDeproxy deproxy
     def name
     int request_queue_size = 5
-    int donn_number = 1
+    int conn_number = 1
     def defaultHandler
     def hostname
 
@@ -73,36 +73,35 @@ class DeproxyEndpoint {
             while (!Thread.currentThread().isInterrupted()) {
                 serverSocket.accept({ socket ->
                     println "processing new connection..."
-                    socket.withStreams { input, output ->
-                        def reader = input.newReader()
-                        def buffer = reader.readLine()
-                        println "server received: $buffer"
-                        output << buffer + "\n"
+
+                    def clientThread = new Thread()
+                    clientThread.setDaemon(true)
+                    clientThread.setName("Thread - Connection ${conn_number} on ${name}")
+                    clientThread.start() {
+                        processNewConnection(socket)
                     }
-                    println "processing/thread complete."
+
+                    conn_number += 1
                 })
             }
         }
     }
 
-    //Stops the serve_forever loop.
-    //Blocks until the loop has finished. This must be called while
-    //serve_forever() is running in another thread, or it will
-    //deadlock.
-    def shutdown() {
-        log.log(Level.DEBUG, "Shutting down ${name}")
-        serverThread.interrupt()
-        log.log(Level.DEBUG, "Finished shutting down ${name}")
+    def processNewConnection(Socket socket) {
+        log.log(Level.DEBUG, "received request from " + socket.inetAddress.hostAddress)
+
+        //TODO: replace this simple echo with the real stuff
+        socket.withStreams { input, output ->
+            def reader = input.newReader()
+            def buffer = reader.readLine()
+            println "server received: $buffer"
+            output << buffer + "\n"
+        }
+
+        Thread.currentThread().interrupt()
     }
 
 
-}
-
-//
-//    def process_new_connection(self, request, client_address):
-//        logger.debug('received request from %s' % str(client_address))
-//        try:
-//            connection = request
 //            if self.disable_nagle_algorithm:
 //                connection.setsockopt(socket.IPPROTO_TCP,
 //                                      socket.TCP_NODELAY, True)
@@ -122,60 +121,27 @@ class DeproxyEndpoint {
 //            self.handle_error(request, client_address)
 //        finally:
 //            self.shutdown_request(request)
-//
-//    def shutdown_request(self, request):
-//        """Called to shutdown and close an individual request."""
-//        logger.debug('')
-//        try:
-//            #explicitly shutdown. socket.close() merely releases
-//            #the socket and waits for GC to perform the actual close.
-//            request.shutdown(socket.SHUT_WR)
-//        except socket.error:
-//            pass # some platforms may raise ENOTCONN here
-//        request.close()
-//
-//    def serve_forever(self, poll_interval=0.5):
-//        """Handle one request at a time until shutdown.
-//
-//Polls for shutdown every poll_interval seconds. Ignores
-//self.timeout. If you need to do periodic tasks, do them in
-//another thread.
-//"""
-//        logger.debug('')
-//        self.__is_shut_down.clear()
-//        try:
-//            while not self.__shutdown_request:
-//                # XXX: Consider using another file descriptor or
-//                # connecting to the socket to wake this up instead of
-//                # polling. Polling reduces our responsiveness to a
-//                # shutdown request and wastes cpu at all other times.
-//                r, w, e = select.select([self.socket], [], [], poll_interval)
-//                if self.socket in r:
-//                    try:
-//                        request, client_address = self.socket.accept()
-//                    except socket.error:
-//                        return
-//
-//                    try:
-//                        with self._conn_number_lock:
-//                            t = threading.Thread(
-//                                target=self.process_new_connection,
-//                                name=("Thread - Connection %i on %s" %
-//                                      (self._conn_number, self.name)),
-//                                args=(request, client_address))
-//                            self._conn_number += 1
-//                        t.daemon = True
-//                        t.start()
-//
-//                    except:
-//                        self.handle_error(request, client_address)
-//                        self.shutdown_request(request)
-//
-//        finally:
-//            self.socket.close()
-//            self.__shutdown_request = False
-//            self.__is_shut_down.set()
-//
+
+
+
+
+
+    //Stops the serveForever loop.
+    //Blocks until the loop has finished. This must be called while
+    //serveForever() is running in another thread, or it will
+    //deadlock.
+    def shutdown() {
+        log.log(Level.DEBUG, "Shutting down ${name}")
+        serverThread.interrupt()
+        log.log(Level.DEBUG, "Finished shutting down ${name}")
+    }
+
+
+
+
+}
+
+
 //    def handle_error(self, request, client_address):
 //        """Handle an error gracefully. May be overridden.
 //
