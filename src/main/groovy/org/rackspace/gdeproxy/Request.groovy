@@ -3,22 +3,17 @@ package org.rackspace.gdeproxy
 /**
  * A simple HTTP Request, with method, path, headers, and body.
  */
+
+//class Request:
+//    """A simple HTTP Request, with method, path, headers, and body."""
 class Request {
 
     def method
     def path
     def headers
     def body
-
-    String toString() {
-        sprintf('Request(method=%r, path=%r, headers=%r, body=%r)', method, path, headers, body);
-    }
-
-}
-
-
-//class Request:
-//    """A simple HTTP Request, with method, path, headers, and body."""
+    
+  public Request(method, path, headers=[:], body){
 //    def __init__(self, method, path, headers=None, body=None):
 //        """
 //Parameters:
@@ -30,6 +25,20 @@ class Request {
 //collection.
 //body - An optional request body. Defaults to the empty string.
 //"""
+    this.method = method.toString()
+    this.path = path.toString()
+    this.headers = new HeaderCollection(headers)
+    this.body = body.toString()
+  }
+
+    String toString() {
+        sprintf('Request(method=%r, path=%r, headers=%r, body=%r)', method, path, headers, body);
+    }
+
+}
+
+
+
 //
 //        if headers is None:
 //            headers = {}

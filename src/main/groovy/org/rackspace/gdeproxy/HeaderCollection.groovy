@@ -23,13 +23,19 @@ public class HeaderCollection {
   
   List<Header> _headers = new ArrayList<Header>();
 
-  public HeaderCollection() { //self, Map mapping=None, **kwargs) {
-//        if mapping is not None:
-//            for k, v in mapping.iteritems():
-//                self.add(k, v)
-//        if kwargs is not None:
-//            for k, v in kwargs.iteritems():
-//                self.add(k, v)
+  public HeaderCollection() { 
+  }
+  
+  public HeaderCollection(Map<? extends Object, ? extends Object> map){
+    for (entry in map.entrySet) {
+      this.add(entry.getKey().toString(), entry.getValue().toString())
+    }
+  }
+  
+  public HeaderCollection(HeaderCollection headers){
+    for (header in headers._headers) {
+      this.add(new Header(header.Name, header.Value))
+    }
   }
 
   public boolean Contains(String name) {
@@ -40,6 +46,16 @@ public class HeaderCollection {
     }
 
     return false;
+  }
+  
+  @Override
+  public Object each(Closure closure) {
+    return _headers.each(closure)
+  }
+  
+  @Override
+  public Object eachWithIndex(Closure closure) {
+    return _headers.eachWithIndex(closure)
   }
 
   public int size() {

@@ -109,6 +109,7 @@ class Deproxy {
     //        path = urlparse.urlunsplit(urlparts)
     def uri = new URI(url)
     def host = uri.host
+    def port = uri.port
     def scheme = uri.scheme
     def path = uri.path
     //
@@ -148,7 +149,7 @@ class Deproxy {
     def request = new Request(method, path, headers, requestBody)
     //
     //        response = self.send_request(scheme, host, request)
-    def response = sendRequest(scheme, host, request)
+    def response = sendRequest(request, scheme, host, port)
     //
     //        self.remove_message_chain(request_id)
     removeMessageChain(requestId)
@@ -163,7 +164,7 @@ class Deproxy {
     return messageChain
   }
 
-  Object createSslConnection(Object address, int timeout=30, sourceAddress = null) {
+  Object createSslConnection(address, timeout=30, sourceAddress=null) {
     //    def create_ssl_connection(self, address,
     //                              timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     //                              source_address=None):
@@ -213,29 +214,40 @@ class Deproxy {
   
   
   //    def send_request(self, scheme, host, request):
-  def sendRequest(scheme, host, Request request) {
+  def sendRequest(Request request, scheme, host, port=null) {
     //        """Send the given request to the host and return the Response."""
     //        logger.debug('sending request (scheme="%s", host="%s")' %
     //                     (scheme, host))
-    //        hostparts = host.split(':')
-    //        if len(hostparts) > 1:
-    //            port = hostparts[1]
-    //        else:
-    //            if scheme == 'https':
-    //                port = 443
-    //            else:
-    //                port = 80
+    if (port == null || port == "") {
+      if (scheme == "https") {
+        port = 443
+      }
+      else {
+        port = 80
+      }
+    }
     //        hostname = hostparts[0]
     //        hostip = socket.gethostbyname(hostname)
+    def hostIP = InetAddress.getByName(host)
     //
     //        request_line = '%s %s HTTP/1.1\r\n' % (request.method, request.path)
+    def requestLine = String.format("%s %s HTTP/1.1\r\n", request.method, request.path)
     //        lines = [request_line]
+    def lines = [requestLine]
     //
     //        for name, value in request.headers.iteritems():
     //            lines.append('%s: %s\r\n' % (name, value))
+    request.headers.each{
+      lines += String.format("%s: %s\r\n", it.Name, it.Value)
+    }
+    
     //        lines.append('\r\n')
+    lines += "\r\n"
     //        if request.body is not None and len(request.body) > 0:
-    //            lines.append(request.body)
+    if (request.body != null & request.body != "") {
+      //            lines.append(request.body)
+      lines += request.body
+    }
     //
     //        #for line in lines:
     //        # logger.debug(' ' + line)
@@ -244,10 +256,16 @@ class Deproxy {
     //                     (hostname, str(port)))
     //
     //        address = (hostname, port)
+    Socket s;
     //        if scheme == 'https':
-    //            s = self.create_ssl_connection(address)
-    //        else:
-    //            s = socket.create_connection(address)
+    if (scheme == "https") {
+      //            s = self.create_ssl_connection(address)
+      s = createSslConnection(host, port)
+      //        else:
+    } else {
+      //            s = socket.create_connection(address)
+      s = createConnection(host, port)
+    }
     //
     //        s.send(''.join(lines))
     //
@@ -433,4 +451,4 @@ class Deproxy {
   //        # there is no body
   //        body = None
   //    return body
-  }
+}
