@@ -48,7 +48,11 @@ public class HeaderCollection {
 
 
   public void add(String name, String value) {
-    _headers.add(new Header(name, value));
+    add(new Header(name, value));
+  }
+  
+  public void add(Header header) {
+    _headers.add(header)
   }
 
   public String[] findAll(String name) {
