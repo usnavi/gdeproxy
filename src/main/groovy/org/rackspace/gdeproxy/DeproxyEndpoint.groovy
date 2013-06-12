@@ -1,14 +1,19 @@
 package org.rackspace.gdeproxy
 
 import java.util.concurrent.locks.ReentrantLock 
+import groovy.util.logging.Log
+import org.linkedin.util.clock.SystemClock
+
+import java.util.logging.Level
+
+import static org.linkedin.groovy.util.concurrent.GroovyConcurrentUtils.waitForCondition
 
 /**
  * A class that acts as a mock HTTP server.
  */
 
-
-
 //class DeproxyEndpoint:
+@Log
 class DeproxyEndpoint {
   //
   //    """A class that acts as a mock HTTP server."""
@@ -23,27 +28,16 @@ class DeproxyEndpoint {
   def connectionNumber = 1
   //    _conn_number_lock = threading.Lock()
   def connectionNumberLock = new ReentrantLock()
-  //
-  //    # The default request version. This only affects responses up until
-  //    # the point where the request line is parsed, so it mainly decides what
-  //    # the client gets back when sending a malformed request line.
-  //    # Most web servers default to HTTP 0.9, i.e. don't send a status line.
-  //    default_request_version = "HTTP/0.9"
-  //
-  //    # The version of the HTTP protocol we support.
-  //    # Set this to HTTP/1.1 to enable automatic keepalive
-  //    protocol_version = "HTTP/1.1"
-  //
-  //    # Disable nagle algoritm for this socket, if True.
-  //    # Use only when wbufsize != 0, to avoid small packets.
-  //    disable_nagle_algorithm = False
-  //
   
   def _deproxy
   def String _name
   def int _port
   def _hostname
   def _defaultHandler
+  def clock = new SystemClock()
+
+  Thread serverThread
+  ServerSocket serverSocket
 
   
   //    def __init__(self, deproxy, port, name, hostname=None,
@@ -82,26 +76,32 @@ class DeproxyEndpoint {
     //        self.default_handler = default_handler
     _defaultHandler = defaultHandler
     //
-    //        self.__is_shut_down = threading.Event()
-    //        self.__shutdown_request = False
-    //
-    //        self.socket = socket.socket(self.address_family,
-    //                                    self.socket_type)
-    //
-    //        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    //        self.socket.bind((hostname, port))
-    //        self.socket_address = self.socket.getsockname()
-    //
-    //        self.fqdn = socket.getfqdn(self.socket_address[0])
-    //
-    //        self.socket.listen(self.request_queue_size)
-    //
-    //        thread_name = 'Thread-%s' % self.name
-    //        self.server_thread = threading.Thread(target=self.serve_forever,
-    //                                              name=thread_name)
-    //        self.server_thread.daemon = True
-    //        self.server_thread.start()
-    //
+    String threadName = "Thread-${name}"
+
+    serverThread = new Thread()
+    serverThread.setName(threadName)
+    serverThread.setDaemon(true)
+
+    serverThread.start {
+
+      serverSocket = new ServerSocket()
+      serverSocket.setReuseAddress(true)
+      serverSocket.setSoTimeout(1000)
+      serverSocket.bind(new InetSocketAddress(port))
+
+      while (!serverThread.isInterrupted()) {
+        try {
+          serverSocket.accept(true, { socket ->
+              processNewConnection(socket)
+            })
+        } catch (SocketTimeoutException ex) {
+        }
+      }
+    }
+
+    waitForCondition(clock, '5s', '1s', {
+        isListening()
+      })
   }
   //    def process_new_connection(self, request, client_address):
   //        logger.debug('received request from %s' % str(client_address))
@@ -127,6 +127,23 @@ class DeproxyEndpoint {
   //        finally:
   //            self.shutdown_request(request)
   //
+  // Simple echo for now
+  def processNewConnection(Socket socket) {
+    println "processing new connection..."
+
+    socket.withStreams { input, output ->
+      println "received request from " + socket.inetAddress.hostAddress
+      def reader = input.newReader()
+      def buffer = reader.readLine()
+      println "server received: $buffer"
+      output.withWriter { writer ->
+        writer << buffer + "\n"
+      }
+    }
+  }
+
+  
+  
   //    def shutdown_request(self, request):
   //        """Called to shutdown and close an individual request."""
   //        logger.debug('')
@@ -138,6 +155,7 @@ class DeproxyEndpoint {
   //            pass # some platforms may raise ENOTCONN here
   //        request.close()
   //
+  
   //    def serve_forever(self, poll_interval=0.5):
   //        """Handle one request at a time until shutdown.
   //
@@ -180,6 +198,7 @@ class DeproxyEndpoint {
   //            self.__shutdown_request = False
   //            self.__is_shut_down.set()
   //
+  
   //    def shutdown(self):
   //        """Stops the serve_forever loop.
   //
@@ -194,6 +213,23 @@ class DeproxyEndpoint {
   //        self.server_thread.join(timeout=5)
   //        logger.debug('Finished shutting down "%s"' % self.name)
   //
+  def shutdown() {
+    println "shutting down"
+
+    log.log(Level.FINE, "Shutting down ${name}")
+    if (serverThread) {
+      serverThread.interrupt()
+    }
+    if (serverSocket)
+    serverSocket.close()
+    log.log(Level.FINE, "Finished shutting down ${name}")
+  }
+
+
+  boolean isListening() {
+    return serverSocket != null && !serverSocket.isClosed()
+  }
+
   //    def handle_error(self, request, client_address):
   //        """Handle an error gracefully. May be overridden.
   //
@@ -208,6 +244,7 @@ class DeproxyEndpoint {
   //        traceback.print_exc() # XXX But this goes to stderr!
   //        print '-' * 40
   //
+  
   //    def handle_one_request(self, rfile, wfile):
   //        logger.debug('')
   //        close_connection = True
@@ -314,6 +351,7 @@ class DeproxyEndpoint {
   //
   //        return close_connection
   //
+  
   //    def parse_request(self, rfile, wfile):
   //        logger.debug('reading request line')
   //        request_line = rfile.readline(65537)
@@ -396,6 +434,7 @@ class DeproxyEndpoint {
   //        logger.debug('returning')
   //        return (Request(method, path, headers, body), persistent_connection)
   //
+  
   //    def send_error(self, wfile, code, method, request_version, message=None):
   //        """Send and log an error reply.
   //
@@ -435,6 +474,7 @@ class DeproxyEndpoint {
   //
   //        self.send_response(response)
   //
+  
   //    def send_response(self, wfile, response):
   //        """
   //Send the given Response over the socket. Add Server and Date headers
@@ -459,6 +499,7 @@ class DeproxyEndpoint {
   //                         len(response.body))
   //            wfile.write(response.body)
   //
+  
   //    def date_time_string(self, timestamp=None):
   //        """Return the current date and time formatted for a message header."""
   //        if timestamp is None:
@@ -476,72 +517,5 @@ class DeproxyEndpoint {
   //        return s
   //
   //
-  //# Table mapping response codes to messages; entries have the
-  //# form {code: (shortmessage, longmessage)}.
-  //# See RFC 2616.
-  //messages_by_response_code = {
-  //    100: ('Continue', 'Request received, please continue'),
-  //    101: ('Switching Protocols',
-  //          'Switching to new protocol; obey Upgrade header'),
-  //
-  //    200: ('OK', 'Request fulfilled, document follows'),
-  //    201: ('Created', 'Document created, URL follows'),
-  //    202: ('Accepted',
-  //          'Request accepted, processing continues off-line'),
-  //    203: ('Non-Authoritative Information', 'Request fulfilled from cache'),
-  //    204: ('No Content', 'Request fulfilled, nothing follows'),
-  //    205: ('Reset Content', 'Clear input form for further input.'),
-  //    206: ('Partial Content', 'Partial content follows.'),
-  //
-  //    300: ('Multiple Choices',
-  //          'Object has several resources -- see URI list'),
-  //    301: ('Moved Permanently', 'Object moved permanently -- see URI list'),
-  //    302: ('Found', 'Object moved temporarily -- see URI list'),
-  //    303: ('See Other', 'Object moved -- see Method and URL list'),
-  //    304: ('Not Modified',
-  //          'Document has not changed since given time'),
-  //    305: ('Use Proxy',
-  //          'You must use proxy specified in Location to access this '
-  //          'resource.'),
-  //    307: ('Temporary Redirect',
-  //          'Object moved temporarily -- see URI list'),
-  //
-  //    400: ('Bad Request',
-  //          'Bad request syntax or unsupported method'),
-  //    401: ('Unauthorized',
-  //          'No permission -- see authorization schemes'),
-  //    402: ('Payment Required',
-  //          'No payment -- see charging schemes'),
-  //    403: ('Forbidden',
-  //          'Request forbidden -- authorization will not help'),
-  //    404: ('Not Found', 'Nothing matches the given URI'),
-  //    405: ('Method Not Allowed',
-  //          'Specified method is invalid for this resource.'),
-  //    406: ('Not Acceptable', 'URI not available in preferred format.'),
-  //    407: ('Proxy Authentication Required', 'You must authenticate with '
-  //          'this proxy before proceeding.'),
-  //    408: ('Request Timeout', 'Request timed out; try again later.'),
-  //    409: ('Conflict', 'Request conflict.'),
-  //    410: ('Gone',
-  //          'URI no longer exists and has been permanently removed.'),
-  //    411: ('Length Required', 'Client must specify Content-Length.'),
-  //    412: ('Precondition Failed', 'Precondition in headers is false.'),
-  //    413: ('Request Entity Too Large', 'Entity is too large.'),
-  //    414: ('Request-URI Too Long', 'URI is too long.'),
-  //    415: ('Unsupported Media Type', 'Entity body in unsupported format.'),
-  //    416: ('Requested Range Not Satisfiable',
-  //          'Cannot satisfy request range.'),
-  //    417: ('Expectation Failed',
-  //          'Expect condition could not be satisfied.'),
-  //
-  //    500: ('Internal Server Error', 'Server got itself in trouble'),
-  //    501: ('Not Implemented',
-  //          'Server does not support this operation'),
-  //    502: ('Bad Gateway', 'Invalid responses from another server/proxy.'),
-  //    503: ('Service Unavailable',
-  //          'The server cannot process the request due to a high load'),
-  //    504: ('Gateway Timeout',
-  //          'The gateway server did not receive a timely response'),
-  //    505: ('HTTP Version Not Supported', 'Cannot fulfill request.'),
-  //}
+  
 }

@@ -10,8 +10,8 @@ package org.rackspace.gdeproxy
 //class MessageChain:
 class MessageChain {
 
-  def sentRequest
-  def receivedResponse
+  Request sentRequest
+  Response receivedResponse
   def defaultHandler
   def handlers = [:]
   def handlings = []
@@ -54,25 +54,3 @@ class MessageChain {
       handlerFunction, sentRequest, handlings, receivedResponse, orphanedHandlings)
   }
 }
-
-//    """
-//An object containing the initial request sent via the make_request method,
-//and all request/response pairs (Handling objects) processed by
-//DeproxyEndpoint objects.
-//"""
-//
-//    def add_handling(self, handling):
-//        with self.lock:
-//            self.handlings.append(handling)
-//
-//    def add_orphaned_handling(self, handling):
-//        with self.lock:
-//            self.orphaned_handlings.append(handling)
-//
-//    def __repr__(self):
-//        return ('MessageChain(default_handler=%r, handlers=%r, '
-//                'sent_request=%r, handlings=%r, received_response=%r, '
-//                'orphaned_handlings=%r)' %
-//                (self.default_handler, self.handlers, self.sent_request,
-//                 self.handlings, self.received_response,
-//                 self.orphaned_handlings))
