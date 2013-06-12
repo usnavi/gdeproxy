@@ -71,17 +71,17 @@ public class HeaderCollection {
     _headers.add(header)
   }
 
-  public String[] findAll(String name) {
+  def findAll(String name) {
 
-    ArrayList<String> values = new ArrayList<String>();
+    def values = []
 
-    for (Header header : _headers) {
-      if (name.equalsIgnoreCase(header.Name)) {
-        values.add(header.Value);
+    _headers.each {
+      if (it.name.equalsIgnoreCase(name)){
+        values += it.value
       }
     }
 
-    return values.toArray(new String[0]);
+    return values
   }
 
   public void deleteAll(String name) {

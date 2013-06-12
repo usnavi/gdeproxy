@@ -15,7 +15,7 @@ import static org.junit.Assert.*;
 class DeproxyShutdownTest {
   
   @Test
-  def testShutdown(){
+  void testShutdown(){
     
     /*
      *  When a Deproxy shuts down, all of its endpoints are shut down and 
