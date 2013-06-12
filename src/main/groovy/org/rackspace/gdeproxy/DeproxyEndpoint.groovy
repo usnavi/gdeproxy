@@ -1,7 +1,11 @@
 package org.rackspace.gdeproxy
 
 import groovy.util.logging.Log
-import org.apache.log4j.Level
+import org.linkedin.util.clock.SystemClock
+
+import java.util.logging.Level
+
+import static org.linkedin.groovy.util.concurrent.GroovyConcurrentUtils.waitForCondition
 
 /**
  * A class that acts as a mock HTTP server.
@@ -25,12 +29,13 @@ class DeproxyEndpoint {
     def port
     GDeproxy deproxy
     def name
-    int request_queue_size = 5
     int conn_number = 1
     def defaultHandler
     def hostname
+    def clock = new SystemClock()
 
     Thread serverThread
+    ServerSocket serverSocket
 
     //Initialize a DeproxyEndpoint
     //
@@ -59,210 +64,56 @@ class DeproxyEndpoint {
 
 //        logger.debug('port=%s, name=%s, hostname=%s', port, name, hostname)
 
-        ServerSocket serverSocket = new ServerSocket(port)
-        serverSocket.setReuseAddress(true)
-        serverSocket.setSoTimeout()
-
         String threadName = "Thread-${name}"
 
-        def serverThread = new Thread()
+        serverThread = new Thread()
         serverThread.setName(threadName)
         serverThread.setDaemon(true)
 
         serverThread.start {
-            while (!Thread.currentThread().isInterrupted()) {
-                serverSocket.accept({ socket ->
-                    println "processing new connection..."
 
-                    def clientThread = new Thread()
-                    clientThread.setDaemon(true)
-                    clientThread.setName("Thread - Connection ${conn_number} on ${name}")
-                    clientThread.start() {
+            serverSocket = new ServerSocket()
+            serverSocket.setReuseAddress(true)
+            serverSocket.setSoTimeout(1000)
+            serverSocket.bind(new InetSocketAddress(port))
+
+            while (!serverThread.isInterrupted()) {
+                try {
+                    serverSocket.accept(true, { socket ->
                         processNewConnection(socket)
-                    }
+                    })
+                } catch (SocketTimeoutException ex) {
+                }
+            }
+        }
 
-                    conn_number += 1
-                })
+        waitForCondition(clock, '5s', '1s', {
+            isListening()
+        })
+    }
+
+    // Simple echo for now
+    def processNewConnection(Socket socket) {
+        println "processing new connection..."
+
+        socket.withStreams { input, output ->
+            println "received request from " + socket.inetAddress.hostAddress
+            def reader = input.newReader()
+            def buffer = reader.readLine()
+            println "server received: $buffer"
+            output.withWriter { writer ->
+                writer << buffer + "\n"
             }
         }
     }
 
-    def processNewConnection(Socket socket) {
-        log.log(Level.DEBUG, "received request from " + socket.inetAddress.hostAddress)
+    def handleOneRequest(reader, writer) {
 
-        //TODO: replace this simple echo with the real stuff
-        socket.withStreams { input, output ->
-            def reader = input.newReader()
-            def buffer = reader.readLine()
-            println "server received: $buffer"
-            output << buffer + "\n"
-        }
 
-        Thread.currentThread().interrupt()
     }
 
+    def parseRequest(reader, writer) {
 
-//            if self.disable_nagle_algorithm:
-//                connection.setsockopt(socket.IPPROTO_TCP,
-//                                      socket.TCP_NODELAY, True)
-//            rfile = connection.makefile('rb', -1)
-//            wfile = connection.makefile('wb', 0)
-//
-//            try:
-//                close = self.handle_one_request(rfile, wfile)
-//                while not close:
-//                    close = self.handle_one_request(rfile, wfile)
-//            finally:
-//                if not wfile.closed:
-//                    wfile.flush()
-//                wfile.close()
-//                rfile.close()
-//        except:
-//            self.handle_error(request, client_address)
-//        finally:
-//            self.shutdown_request(request)
-
-
-
-
-
-    //Stops the serveForever loop.
-    //Blocks until the loop has finished. This must be called while
-    //serveForever() is running in another thread, or it will
-    //deadlock.
-    def shutdown() {
-        log.log(Level.DEBUG, "Shutting down ${name}")
-        serverThread.interrupt()
-        log.log(Level.DEBUG, "Finished shutting down ${name}")
-    }
-
-
-
-
-}
-
-
-//    def handle_error(self, request, client_address):
-//        """Handle an error gracefully. May be overridden.
-//
-//The default is to print a traceback and continue.
-//
-//"""
-//        logger.debug('')
-//        print '-' * 40
-//        print 'Exception happened during processing of request from',
-//        print client_address
-//        import traceback
-//        traceback.print_exc() # XXX But this goes to stderr!
-//        print '-' * 40
-//
-//    def handle_one_request(self, rfile, wfile):
-//        logger.debug('')
-//        close_connection = True
-//        try:
-//            logger.debug('calling parse_request')
-//            ret = self.parse_request(rfile, wfile)
-//            logger.debug('returned from parse_request')
-//            if not ret:
-//                return 1
-//
-//            (incoming_request, persistent_connection) = ret
-//
-//            if persistent_connection:
-//                close_connection = False
-//                conn_value = incoming_request.headers.get('connection')
-//                if conn_value:
-//                    if conn_value.lower() == 'close':
-//                        close_connection = True
-//            else:
-//                close_connection = True
-//            close_connection = True
-//
-//            message_chain = None
-//            request_id = incoming_request.headers.get(request_id_header_name)
-//            if request_id:
-//                logger.debug('The request has a request id: %s=%s' %
-//                             (request_id_header_name, request_id))
-//                message_chain = self.deproxy.get_message_chain(request_id)
-//            else:
-//                logger.debug('The request does not have a request id')
-//
-//            # Handler resolution:
-//            # 1. Check the handlers mapping specified to ``make_request``
-//            # a. By reference
-//            # b. By name
-//            # 2. Check the default_handler specified to ``make_request``
-//            # 3. Check the default for this endpoint
-//            # 4. Check the default for the parent Deproxy
-//            # 5. Fallback to simple_handler
-//            if (message_chain and message_chain.handlers is not None and
-//                    self in message_chain.handlers):
-//                handler = message_chain.handlers[self]
-//            elif (message_chain and message_chain.handlers is not None and
-//                  self.name in message_chain.handlers):
-//                handler = message_chain.handlers[self.name]
-//            elif message_chain and message_chain.default_handler is not None:
-//                handler = message_chain.default_handler
-//            elif self.default_handler is not None:
-//                handler = self.default_handler
-//            elif self.deproxy.default_handler is not None:
-//                handler = self.deproxy.default_handler
-//            else:
-//                # last resort
-//                handler = simple_handler
-//
-//            logger.debug('calling handler')
-//            resp = handler(incoming_request)
-//            logger.debug('returned from handler')
-//
-//            add_default_headers = True
-//            if type(resp) == tuple:
-//                logger.debug('Handler gave back a tuple: %s',
-//                             (type(resp[0]), resp[1:]))
-//                if len(resp) > 1:
-//                    add_default_headers = resp[1]
-//                resp = resp[0]
-//
-//            if (resp.body is not None and
-//                    'Content-Length' not in resp.headers):
-//                resp.headers.add('Content-Length', len(resp.body))
-//
-//            if add_default_headers:
-//                if 'Server' not in resp.headers:
-//                    resp.headers['Server'] = version_string
-//                if 'Date' not in resp.headers:
-//                    resp.headers['Date'] = self.date_time_string()
-//            else:
-//                logger.debug('Don\'t add default response headers.')
-//
-//            found = resp.headers.get(request_id_header_name)
-//            if not found and request_id is not None:
-//                resp.headers[request_id_header_name] = request_id
-//
-//            outgoing_response = resp
-//
-//            h = Handling(self, incoming_request, outgoing_response)
-//            if message_chain:
-//                message_chain.add_handling(h)
-//            else:
-//                self.deproxy.add_orphaned_handling(h)
-//
-//            self.send_response(wfile, resp)
-//
-//            wfile.flush()
-//
-//            if persistent_connection and not close_connection:
-//                conn_value = incoming_request.headers.get('connection')
-//                if conn_value:
-//                    if conn_value.lower() == 'close':
-//                        close_connection = True
-//
-//        except socket.timeout, e:
-//            close_connection = True
-//
-//        return close_connection
-//
-//    def parse_request(self, rfile, wfile):
 //        logger.debug('reading request line')
 //        request_line = rfile.readline(65537)
 //        if len(request_line) > 65536:
@@ -344,6 +195,151 @@ class DeproxyEndpoint {
 //        logger.debug('returning')
 //        return (Request(method, path, headers, body), persistent_connection)
 //
+    }
+
+    //
+    //    def handle_one_request(self, rfile, wfile):
+    //        logger.debug('')
+    //        close_connection = True
+    //        try:
+    //            logger.debug('calling parse_request')
+    //            ret = self.parse_request(rfile, wfile)
+    //            logger.debug('returned from parse_request')
+    //            if not ret:
+    //                return 1
+    //
+    //            (incoming_request, persistent_connection) = ret
+    //
+    //            if persistent_connection:
+    //                close_connection = False
+    //                conn_value = incoming_request.headers.get('connection')
+    //                if conn_value:
+    //                    if conn_value.lower() == 'close':
+    //                        close_connection = True
+    //            else:
+    //                close_connection = True
+    //            close_connection = True
+    //
+    //            message_chain = None
+    //            request_id = incoming_request.headers.get(request_id_header_name)
+    //            if request_id:
+    //                logger.debug('The request has a request id: %s=%s' %
+    //                             (request_id_header_name, request_id))
+    //                message_chain = self.deproxy.get_message_chain(request_id)
+    //            else:
+    //                logger.debug('The request does not have a request id')
+    //
+    //            # Handler resolution:
+    //            # 1. Check the handlers mapping specified to ``make_request``
+    //            # a. By reference
+    //            # b. By name
+    //            # 2. Check the default_handler specified to ``make_request``
+    //            # 3. Check the default for this endpoint
+    //            # 4. Check the default for the parent Deproxy
+    //            # 5. Fallback to simple_handler
+    //            if (message_chain and message_chain.handlers is not None and
+    //                    self in message_chain.handlers):
+    //                handler = message_chain.handlers[self]
+    //            elif (message_chain and message_chain.handlers is not None and
+    //                  self.name in message_chain.handlers):
+    //                handler = message_chain.handlers[self.name]
+    //            elif message_chain and message_chain.default_handler is not None:
+    //                handler = message_chain.default_handler
+    //            elif self.default_handler is not None:
+    //                handler = self.default_handler
+    //            elif self.deproxy.default_handler is not None:
+    //                handler = self.deproxy.default_handler
+    //            else:
+    //                # last resort
+    //                handler = simple_handler
+    //
+    //            logger.debug('calling handler')
+    //            resp = handler(incoming_request)
+    //            logger.debug('returned from handler')
+    //
+    //            add_default_headers = True
+    //            if type(resp) == tuple:
+    //                logger.debug('Handler gave back a tuple: %s',
+    //                             (type(resp[0]), resp[1:]))
+    //                if len(resp) > 1:
+    //                    add_default_headers = resp[1]
+    //                resp = resp[0]
+    //
+    //            if (resp.body is not None and
+    //                    'Content-Length' not in resp.headers):
+    //                resp.headers.add('Content-Length', len(resp.body))
+    //
+    //            if add_default_headers:
+    //                if 'Server' not in resp.headers:
+    //                    resp.headers['Server'] = version_string
+    //                if 'Date' not in resp.headers:
+    //                    resp.headers['Date'] = self.date_time_string()
+    //            else:
+    //                logger.debug('Don\'t add default response headers.')
+    //
+    //            found = resp.headers.get(request_id_header_name)
+    //            if not found and request_id is not None:
+    //                resp.headers[request_id_header_name] = request_id
+    //
+    //            outgoing_response = resp
+    //
+    //            h = Handling(self, incoming_request, outgoing_response)
+    //            if message_chain:
+    //                message_chain.add_handling(h)
+    //            else:
+    //                self.deproxy.add_orphaned_handling(h)
+    //
+    //            self.send_response(wfile, resp)
+    //
+    //            wfile.flush()
+    //
+    //            if persistent_connection and not close_connection:
+    //                conn_value = incoming_request.headers.get('connection')
+    //                if conn_value:
+    //                    if conn_value.lower() == 'close':
+    //                        close_connection = True
+    //
+    //        except socket.timeout, e:
+    //            close_connection = True
+    //
+    //        return close_connection
+    //
+
+
+    def shutdown() {
+        println "shutting down"
+
+        log.log(Level.FINE, "Shutting down ${name}")
+        if (serverThread) {
+            serverThread.interrupt()
+        }
+        if (serverSocket)
+            serverSocket.close()
+        log.log(Level.FINE, "Finished shutting down ${name}")
+    }
+
+
+    boolean isListening() {
+        return serverSocket != null && !serverSocket.isClosed()
+    }
+
+
+}
+
+//    def handle_error(self, request, client_address):
+//        """Handle an error gracefully. May be overridden.
+//
+//The default is to print a traceback and continue.
+//
+//"""
+//        logger.debug('')
+//        print '-' * 40
+//        print 'Exception happened during processing of request from',
+//        print client_address
+//        import traceback
+//        traceback.print_exc() # XXX But this goes to stderr!
+//        print '-' * 40
+
 //    def send_error(self, wfile, code, method, request_version, message=None):
 //        """Send and log an error reply.
 //
