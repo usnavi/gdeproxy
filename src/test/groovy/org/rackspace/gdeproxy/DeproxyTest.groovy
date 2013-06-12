@@ -9,13 +9,13 @@ class DeproxyTest extends Specification {
 
     def static deproxy_port_base = 9999
 
-    GDeproxy deproxy
+    Deproxy deproxy
     int deproxyPort
     String endpoint
 
     def setup() {
         deproxyPort = getNextDeproxyPort()
-        deproxy = new GDeproxy()
+        deproxy = new Deproxy()
         endpoint = deproxy.addEndpoint(deproxyPort)
     }
 

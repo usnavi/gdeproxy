@@ -11,7 +11,7 @@ class DeproxyEndpointTest extends Specification {
 
 
     def setup() {
-        deproxyEndpoint = new DeproxyEndpoint(Mock(GDeproxy), 8888, "foo", "localhost", new Handler())
+        deproxyEndpoint = new DeproxyEndpoint(Mock(Deproxy), 8888, "foo", "localhost", new Handler())
     }
 
     def cleanup() {
