@@ -1,6 +1,6 @@
 package org.rackspace.gdeproxy
 
-import java.util.concurrent.locks.ReentrantLock 
+import java.util.concurrent.locks.ReentrantLock
 import groovy.util.logging.Log
 import org.linkedin.util.clock.SystemClock
 
@@ -28,7 +28,7 @@ class DeproxyEndpoint {
   def connectionNumber = 1
   //    _conn_number_lock = threading.Lock()
   def connectionNumberLock = new ReentrantLock()
-  
+
   def _deproxy
   def String _name
   def int _port
@@ -39,7 +39,7 @@ class DeproxyEndpoint {
   Thread serverThread
   ServerSocket serverSocket
 
-  
+
   //    def __init__(self, deproxy, port, name, hostname=None,
   //                 default_handler=None):
   def DeproxyEndpoint(Deproxy deproxy, int port, String name, String hostname=null,
@@ -127,22 +127,35 @@ class DeproxyEndpoint {
   //        finally:
   //            self.shutdown_request(request)
   //
-  // Simple echo for now
   def processNewConnection(Socket socket) {
     println "processing new connection..."
 
-    socket.withStreams { input, output ->
-      println "received request from " + socket.inetAddress.hostAddress
-      def reader = input.newReader()
-      def buffer = reader.readLine()
-      println "server received: $buffer"
-      output.withWriter { writer ->
-        writer << buffer + "\n"
+    try {
+      socket.withStreams { input, output ->
+        output.withWriter { writer ->
+          try {
+            input.withReader { reader ->
+              def close = false
+              while (!close) {
+                handleOneRequest(reader, writer)
+              }
+            }
+          } finally {
+            sendResponse(writer,
+              new Response(500, "Internal Server Error", null,
+                "The server encountered an unexpected condition which prevented it from fulfilling the request."))
+          }
+        }
       }
+
+    } finally {
+
+      socket.shutdownInput()
+      socket.shutdownOutput()
+      socket.close()
     }
   }
 
-  
   
   //    def shutdown_request(self, request):
   //        """Called to shutdown and close an individual request."""
@@ -155,7 +168,7 @@ class DeproxyEndpoint {
   //            pass # some platforms may raise ENOTCONN here
   //        request.close()
   //
-  
+
   //    def serve_forever(self, poll_interval=0.5):
   //        """Handle one request at a time until shutdown.
   //
@@ -198,7 +211,7 @@ class DeproxyEndpoint {
   //            self.__shutdown_request = False
   //            self.__is_shut_down.set()
   //
-  
+
   //    def shutdown(self):
   //        """Stops the serve_forever loop.
   //
@@ -244,7 +257,7 @@ class DeproxyEndpoint {
   //        traceback.print_exc() # XXX But this goes to stderr!
   //        print '-' * 40
   //
-  
+
   //    def handle_one_request(self, rfile, wfile):
   //        logger.debug('')
   //        close_connection = True
@@ -351,7 +364,7 @@ class DeproxyEndpoint {
   //
   //        return close_connection
   //
-  
+
   //    def parse_request(self, rfile, wfile):
   //        logger.debug('reading request line')
   //        request_line = rfile.readline(65537)
@@ -434,7 +447,7 @@ class DeproxyEndpoint {
   //        logger.debug('returning')
   //        return (Request(method, path, headers, body), persistent_connection)
   //
-  
+
   //    def send_error(self, wfile, code, method, request_version, message=None):
   //        """Send and log an error reply.
   //
@@ -474,7 +487,7 @@ class DeproxyEndpoint {
   //
   //        self.send_response(response)
   //
-  
+
   //    def send_response(self, wfile, response):
   //        """
   //Send the given Response over the socket. Add Server and Date headers
@@ -499,7 +512,7 @@ class DeproxyEndpoint {
   //                         len(response.body))
   //            wfile.write(response.body)
   //
-  
+
   //    def date_time_string(self, timestamp=None):
   //        """Return the current date and time formatted for a message header."""
   //        if timestamp is None:
@@ -517,5 +530,5 @@ class DeproxyEndpoint {
   //        return s
   //
   //
-  
+
 }
