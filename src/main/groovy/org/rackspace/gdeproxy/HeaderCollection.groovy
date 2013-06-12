@@ -125,10 +125,8 @@ public class HeaderCollection {
     return defaultValue;
   }
 
-  public static HeaderCollection fromStream(InputStream stream) throws IOException {
+  public static HeaderCollection fromReader(BufferedReader reader) throws IOException {
 
-    BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
-    
     HeaderCollection headers = new HeaderCollection();
     String line = reader.readLine();
     while (line != null && !line.equals("") && !line.equals("\r\n")) {

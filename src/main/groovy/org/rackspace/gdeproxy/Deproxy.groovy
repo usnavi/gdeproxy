@@ -1,7 +1,7 @@
 package org.rackspace.gdeproxy
 
 import java.util.UUID
-import java.util.concurrent.locks.ReentrantLock 
+import java.util.concurrent.locks.ReentrantLock
 import java.net.URI
 
 /**
@@ -36,7 +36,7 @@ class Deproxy {
     _defaultHandler = defaultHandler
     //
   }
-    
+
   public MessageChain makeRequest(String url, String method = "GET", headers = null,
     String requestBody = "", defaultHandler = null,
     Map<DeproxyEndpoint, Object> handlers = null,
@@ -164,55 +164,6 @@ class Deproxy {
     return messageChain
   }
 
-  Object createSslConnection(address, timeout=30, sourceAddress=null) {
-    //    def create_ssl_connection(self, address,
-    //                              timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-    //                              source_address=None):
-    //        """
-    //Copied from the socket module and modified for ssl support.
-    //
-    //Connect to *address* and return the socket object.
-    //
-    //Convenience function. Connect to *address* (a 2-tuple ``(host,
-    //port)``) and return the socket object. Passing the optional
-    //*timeout* parameter will set the timeout on the socket instance
-    //before attempting to connect. If no *timeout* is supplied, the
-    //global default timeout setting returned by :func:`getdefaulttimeout`
-    //is used. If *source_address* is set it must be a tuple of (host, port)
-    //for the socket to bind as a source address before making the
-    //connection. A host of '' or port 0 tells the OS to use the default.
-    //"""
-    //
-    //        host, port = address
-    //        err = None
-    //        for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
-    //            af, socktype, proto, canonname, sa = res
-    //            sock = None
-    //            try:
-    //                sock = socket.socket(af, socktype, proto)
-    //
-    //                sock = ssl.wrap_socket(sock)
-    //
-    //                if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
-    //                    sock.settimeout(timeout)
-    //                if source_address:
-    //                    sock.bind(source_address)
-    //                sock.connect(sa)
-    //                return sock
-    //
-    //            except socket.error as _:
-    //                err = _
-    //                if sock is not None:
-    //                    sock.close()
-    //
-    //        if err is not None:
-    //            raise err
-    //        else:
-    //            raise error("getaddrinfo returns an empty list")
-    //
-  }
-  
-  
   //    def send_request(self, scheme, host, request):
   def sendRequest(Request request, scheme, host, port=null) {
     //        """Send the given request to the host and return the Response."""
@@ -231,18 +182,18 @@ class Deproxy {
     def hostIP = InetAddress.getByName(host)
     //
     //        request_line = '%s %s HTTP/1.1\r\n' % (request.method, request.path)
-    def requestLine = String.format("%s %s HTTP/1.1\r\n", request.method, request.path)
+    def requestLine = String.format("%s %s HTTP/1.1", request.method, request.path)
     //        lines = [request_line]
     def lines = [requestLine]
     //
     //        for name, value in request.headers.iteritems():
     //            lines.append('%s: %s\r\n' % (name, value))
     request.headers.each{
-      lines += String.format("%s: %s\r\n", it.Name, it.Value)
+      lines += String.format("%s: %s", it.Name, it.Value)
     }
-    
+
     //        lines.append('\r\n')
-    lines += "\r\n"
+    lines += ""
     //        if request.body is not None and len(request.body) > 0:
     if (request.body != null & request.body != "") {
       //            lines.append(request.body)
@@ -260,47 +211,68 @@ class Deproxy {
     //        if scheme == 'https':
     if (scheme == "https") {
       //            s = self.create_ssl_connection(address)
-      s = createSslConnection(host, port)
+      s = SSLSocketFactory.getDefault().createSocket(host, port)
       //        else:
     } else {
       //            s = socket.create_connection(address)
-      s = createConnection(host, port)
+      s = new Socket(host, port)
     }
+
     //
     //        s.send(''.join(lines))
+    PrintWriter out = new PrintWriter(s.getOutputStream(), false)
+    lines.each {
+      out.print(it)
+      out.print("\r\n")
+    }
+
     //
     //        rfile = s.makefile('rb', -1)
+    BufferedReader reader = new BufferedReader(new InputStreamReader(s.getInputStream()))
     //
     //        logger.debug('Reading response line')
     //        response_line = rfile.readline(65537)
+    String responseLine = reader.readLine()
     //        if (len(response_line) > 65536):
     //            raise ValueError
     //        response_line = response_line.rstrip('\r\n')
     //        logger.debug('Response line is ok: %s' % response_line)
     //
     //        words = response_line.split()
+    def words = responseLine.split("\\s+", 3)
+    if (words.length() != 3)
+    {
+      throw new RuntimeException()
+    }
     //
     //        proto = words[0]
     //        code = words[1]
     //        message = ' '.join(words[2:])
+    def proto = words[0]
+    def code = words[1]
+    def message = words[2]
     //
     //        logger.debug('Reading headers')
     //        response_headers = HeaderCollection.from_stream(rfile)
+    def headers = HeaderCollection.fromReader(reader)
     //        logger.debug('Headers ok')
     //        for k,v in response_headers.iteritems():
     //            logger.debug(' %s: %s', k, v)
     //
     //        logger.debug('Reading body')
     //        body = read_body_from_stream(rfile, response_headers)
+    def body = readBodyfromStream(reader, headers)
     //
     //        logger.debug('Creating Response object')
     //        response = Response(code, message, response_headers, body)
+    def response = new Response(code, message, headers, body)
     //
     //        logger.debug('Returning Response object')
     //        return response
     //
+    return response
   }
-  
+
   //    def add_endpoint(self, port, name=None, hostname=None,
   //                     default_handler=None):
   def addEndpoint(int port, name=null, hostname=null, defaultHandler=null) {
@@ -339,7 +311,7 @@ class Deproxy {
       //
     }
   }
-  
+
   //    def _remove_endpoint(self, endpoint):
   def _remove_endpoint(endpoint) {
     //        """Remove a DeproxyEndpoint from the list of endpoints. Returns True if
@@ -359,12 +331,11 @@ class Deproxy {
       //
     }
   }
-  
+
   //    def shutdown_all_endpoints(self):
   def shutdown() {
     //        """Shutdown and remove all endpoints in use."""
     //        logger.debug('')
-    def endpoints = []
     synchronized (_endpointLock) {
       for (e in _endpoints) {
         e.shutdown()
@@ -372,7 +343,7 @@ class Deproxy {
       _endpoints = []
     }
   }
-  
+
   //    def add_message_chain(self, request_id, message_chain):
   def addMessageChain(requestId, messageChain) {
     //        """Add a MessageChain to the internal list for the given request ID."""
@@ -384,7 +355,7 @@ class Deproxy {
       //
     }
   }
-  
+
   //    def remove_message_chain(self, request_id):
   def removeMessageChain(requestId) {
     //        """Remove a particular MessageChain from the internal list."""
@@ -396,7 +367,7 @@ class Deproxy {
       //
     }
   }
-  
+
   //    def get_message_chain(self, request_id):
   def getMessageChain(requestId) {
     //        """Return the MessageChain for the given request ID."""
@@ -415,13 +386,13 @@ class Deproxy {
       }
     }
   }
-  
+
   //    def add_orphaned_handling(self, handling):
   def addOrphanedHandling(handling) {
     //        """Add the handling to all available MessageChains."""
     //        logger.debug('Adding orphaned handling')
     //        with self._message_chains_lock:
-    synchronized (_handlingsLock) {
+    synchronized (_messageChainsLock) {
       //            for mc in self._message_chains.itervalues():
       for (mc in _messageChains.values()) {
         //                mc.add_orphaned_handling(handling)
