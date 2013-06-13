@@ -401,25 +401,43 @@ class Deproxy {
     }
   }
 
-
-
   //
   //def read_body_from_stream(stream, headers):
-  //    if ('Transfer-Encoding' in headers and
-  //            headers['Transfer-Encoding'] != 'identity'):
-  //        # 2
-  //        logger.debug('NotImplementedError - Transfer-Encoding != identity')
-  //        raise NotImplementedError
-  //    elif 'Content-Length' in headers:
-  //        # 3
-  //        length = int(headers['Content-Length'])
-  //        body = stream.read(length)
-  //    elif False:
-  //        # multipart/byteranges ?
-  //        logger.debug('NotImplementedError - multipart/byteranges')
-  //        raise NotImplementedError
-  //    else:
-  //        # there is no body
-  //        body = None
-  //    return body
+  static String readBody(reader, headers) {
+    //    if ('Transfer-Encoding' in headers and
+    //            headers['Transfer-Encoding'] != 'identity'):
+    //        # 2
+    //        logger.debug('NotImplementedError - Transfer-Encoding != identity')
+    //        raise NotImplementedError
+    headers.findAll("Transfer-Encoding").each {
+      if (it.Value != "identity")
+      {
+        throw new UnsupportedOperationException("Non-identity transfer encoding")
+      }
+    }
+    //    elif 'Content-Length' in headers:
+    //        # 3
+    //        length = int(headers['Content-Length'])
+    //        body = stream.read(length)
+    if (headers.containsKey("Content-Length")) {
+      int length = headers.getFirstValue("Content-Length").toInteger()
+      //TODO: this is reading characters, but according to the spec, Content-Length is a count of octets.
+      char[] data = new char[length]
+      int count = reader.read(data, 0, length)
+      if (count != length) {
+        // TODO: what does the spec say should happen in this case?
+      }
+      return new String(data)
+    }
+    //    elif False:
+    //        # multipart/byteranges ?
+    //        logger.debug('NotImplementedError - multipart/byteranges')
+    //        raise NotImplementedError
+
+    //    else:
+    //        # there is no body
+    //        body = None
+    //    return body
+    return null
+  }
 }
