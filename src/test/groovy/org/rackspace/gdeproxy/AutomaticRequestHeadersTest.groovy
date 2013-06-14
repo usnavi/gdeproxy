@@ -14,12 +14,12 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 class AutomaticRequestHeadersTest {
-  
+
   def _port
   def _deproxy
   def _endpoint
   def _url
-  
+
   @Before
   def setUp() {
 //    def setUp(self):

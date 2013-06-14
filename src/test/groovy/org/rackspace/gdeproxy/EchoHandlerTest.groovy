@@ -8,7 +8,7 @@
  * @author richard-sartor
  */
 class EchoHandlerTest {
-	
+
 }
 
 //class TestEchoHandler(unittest.TestCase):

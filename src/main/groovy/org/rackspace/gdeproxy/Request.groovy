@@ -12,8 +12,8 @@ class Request {
   def path
   def headers
   def body
-    
-  public Request(method, path, headers=[:], body){
+
+  public Request(method, path, headers=[:], body=null){
     //    def __init__(self, method, path, headers=None, body=None):
     //        """
     //Parameters:
@@ -28,7 +28,7 @@ class Request {
     this.method = method.toString()
     this.path = path.toString()
     this.headers = new HeaderCollection(headers)
-    this.body = ( body ? body.toString() : null )
+    this.body = ( body ? body.toString() : "" )
   }
 
   String toString() {

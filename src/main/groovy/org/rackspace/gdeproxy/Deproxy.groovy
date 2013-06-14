@@ -3,10 +3,12 @@ package org.rackspace.gdeproxy
 import java.util.UUID
 import java.util.concurrent.locks.ReentrantLock
 import java.net.URI
+import groovy.util.logging.Log4j;
 
 /**
  * The main class.
  */
+@Log4j
 class Deproxy {
   //class Deproxy:
   //    """The main class."""
@@ -66,6 +68,9 @@ class Deproxy {
     //Otherwise, those headers are not added. Defaults to True.
     //"""
     //        logger.debug('')
+
+    log.debug "begin makeRequest"
+
     //
     //        if headers is None:
     //            headers = HeaderCollection()
@@ -114,6 +119,8 @@ class Deproxy {
     def path = uri.path
     //
     //        logger.debug('request_body: "{0}"'.format(request_body))
+    log.debug "request body: ${requestBody}"
+
     //        if len(request_body) > 0:
     if (requestBody == null || requestBody.length() < 1) {
       //            headers.add('Content-Length', len(request_body))
@@ -149,7 +156,9 @@ class Deproxy {
     def request = new Request(method, path, headers, requestBody)
     //
     //        response = self.send_request(scheme, host, request)
+    log.debug "calling sendRequest"
     def response = sendRequest(request, scheme, host, port)
+    log.debug "back from sendRequest"
     //
     //        self.remove_message_chain(request_id)
     removeMessageChain(requestId)
@@ -161,6 +170,8 @@ class Deproxy {
     //
     //        return message_chain
     //
+    log.debug "end makeRequest"
+
     return messageChain
   }
 
@@ -169,6 +180,7 @@ class Deproxy {
     //        """Send the given request to the host and return the Response."""
     //        logger.debug('sending request (scheme="%s", host="%s")' %
     //                     (scheme, host))
+    log.debug "sending request: scheme=${scheme}, host=${host}, port=${port}"
     if (port == null || port == "") {
       if (scheme == "https") {
         port = 443
@@ -207,6 +219,8 @@ class Deproxy {
     //                     (hostname, str(port)))
     //
     //        address = (hostname, port)
+    log.debug "creating socket: host=${host}, port=${port}"
+
     Socket s;
     //        if scheme == 'https':
     if (scheme == "https") {
@@ -220,23 +234,28 @@ class Deproxy {
 
     //
     //        s.send(''.join(lines))
-    PrintWriter out = new PrintWriter(s.getOutputStream(), false)
+    log.debug "sending lines"
     lines.each {
-      out.print(it)
-      out.print("\r\n")
+      log.debug "  :${it}:"
+    }
+    def writer = new SocketWriter(s.getOutputStream())
+    lines.each {
+      writer.writeln(it)
     }
 
     //
     //        rfile = s.makefile('rb', -1)
-    BufferedReader reader = new BufferedReader(new InputStreamReader(s.getInputStream()))
+    def reader = new SocketReader(s.getInputStream())
     //
     //        logger.debug('Reading response line')
+    log.debug "reading response line"
     //        response_line = rfile.readline(65537)
     String responseLine = reader.readLine()
     //        if (len(response_line) > 65536):
     //            raise ValueError
     //        response_line = response_line.rstrip('\r\n')
     //        logger.debug('Response line is ok: %s' % response_line)
+    log.debug "response line is ok: ${responseLine}"
     //
     //        words = response_line.split()
     def words = responseLine.split("\\s+", 3)
@@ -253,23 +272,31 @@ class Deproxy {
     def message = words[2]
     //
     //        logger.debug('Reading headers')
+    log.debug "reading headers"
     //        response_headers = HeaderCollection.from_stream(rfile)
     def headers = HeaderCollection.fromReader(reader)
     //        logger.debug('Headers ok')
     //        for k,v in response_headers.iteritems():
     //            logger.debug(' %s: %s', k, v)
+    headers.each {
+          log.debug "  ${it.Name}: ${it.Value}"
+    }
+
     //
     //        logger.debug('Reading body')
     //        body = read_body_from_stream(rfile, response_headers)
+    log.debug "reading body"
     def body = readBodyfromStream(reader, headers)
     //
     //        logger.debug('Creating Response object')
     //        response = Response(code, message, response_headers, body)
+    log.debug "creating response object"
     def response = new Response(code, message, headers, body)
     //
     //        logger.debug('Returning Response object')
     //        return response
     //
+    log.debug "returning response object"
     return response
   }
 

@@ -1,49 +1,53 @@
-package org.rackspace.gdeproxy
+package org.rackspace.gdeproxy;
 
-import java.util.concurrent.locks.ReentrantLock
-import groovy.util.logging.Log
-import org.linkedin.util.clock.SystemClock
+import java.util.concurrent.locks.ReentrantLock;
+import groovy.util.logging.Log4j;
+import org.linkedin.util.clock.SystemClock;
 
-import java.util.logging.Level
+import java.util.logging.Level;
 
-import static org.linkedin.groovy.util.concurrent.GroovyConcurrentUtils.waitForCondition
+import static org.linkedin.groovy.util.concurrent.GroovyConcurrentUtils.waitForCondition;
+
+import java.io.InputStream;
+import java.net.ServerSocket;
+import java.util.logging.Logger;
 
 /**
  * A class that acts as a mock HTTP server.
  */
 
 //class DeproxyEndpoint:
-@Log
+@Log4j
 class DeproxyEndpoint {
   //
   //    """A class that acts as a mock HTTP server."""
   //
-  //    address_family = socket.AF_INET
-  def addressFamily = "AF_INET"
-  //    socket_type = socket.SOCK_STREAM
-  def socketType = "SOCK_STREAM"
-  //    request_queue_size = 5
-  def requestQueueSize = 5
+
   //    _conn_number = 1
-  def connectionNumber = 1
+  int connectionNumber = 1;
   //    _conn_number_lock = threading.Lock()
-  def connectionNumberLock = new ReentrantLock()
+  def connectionNumberLock = new ReentrantLock();
 
-  def _deproxy
-  def String _name
-  def int _port
-  def _hostname
-  def _defaultHandler
-  def clock = new SystemClock()
+  Deproxy _deproxy;
+  String _name;
+  int _port;
+  String _hostname;
+  Object _defaultHandler;
+  SystemClock clock = new SystemClock();
 
-  Thread serverThread
-  ServerSocket serverSocket
+  Thread serverThread;
+  ServerSocket serverSocket;
 
 
   //    def __init__(self, deproxy, port, name, hostname=None,
   //                 default_handler=None):
-  def DeproxyEndpoint(Deproxy deproxy, int port, String name, String hostname=null,
-    defaultHandler=null) {
+  public DeproxyEndpoint(Deproxy deproxy, int port, String name) {
+    this(deproxy, port, name, "localhost");
+  }
+  public DeproxyEndpoint(Deproxy deproxy, int port, String name, String hostname) {
+    this(deproxy, port, name, hostname, null);
+  }
+  public DeproxyEndpoint(Deproxy deproxy, int port, String name, String hostname, Object defaultHandler) {
     //        """
     //Initialize a DeproxyEndpoint
     //
@@ -76,25 +80,24 @@ class DeproxyEndpoint {
     //        self.default_handler = default_handler
     _defaultHandler = defaultHandler
     //
-    String threadName = "Thread-${name}"
 
-    serverThread = new Thread()
-    serverThread.setName(threadName)
-    serverThread.setDaemon(true)
+    serverThread = Thread.startDaemon("Thread-${name}") {
 
-    serverThread.start {
-
-      serverSocket = new ServerSocket()
-      serverSocket.setReuseAddress(true)
-      serverSocket.setSoTimeout(1000)
-      serverSocket.bind(new InetSocketAddress(port))
+      serverSocket = new ServerSocket(port)
+      //      serverSocket.setReuseAddress(true)
+      //      serverSocket.setSoTimeout(5000)
+      //      serverSocket.bind(new InetSocketAddress(port))
 
       while (!serverThread.isInterrupted()) {
         try {
-          serverSocket.accept(true, { socket ->
-              processNewConnection(socket)
-            })
-        } catch (SocketTimeoutException ex) {
+
+          Socket conn = serverSocket.accept();
+          conn.setSoTimeout(1000);
+          Thread.startDaemon("Thread-${name}-connection") {
+            processNewConnection(conn)
+          }
+        } catch (SocketTimeoutException e) {
+          log.debug "Caught a timeout exception: " + e.toString()
         }
       }
     }
@@ -103,6 +106,8 @@ class DeproxyEndpoint {
         isListening()
       })
   }
+
+
   //    def process_new_connection(self, request, client_address):
   //        logger.debug('received request from %s' % str(client_address))
   //        try:
@@ -128,32 +133,42 @@ class DeproxyEndpoint {
   //            self.shutdown_request(request)
   //
   def processNewConnection(Socket socket) {
-    println "processing new connection..."
+    log.debug "processing new connection..."
 
     try {
-      socket.withStreams { input, output ->
-        output.withWriter { writer ->
-          try {
-            input.withReader { reader ->
-              def close = false
-              while (!close) {
-                handleOneRequest(reader, writer)
-              }
-            }
-          } finally {
-            sendResponse(writer,
-              new Response(500, "Internal Server Error", null,
-                "The server encountered an unexpected condition which prevented it from fulfilling the request."))
-          }
+      log.debug "getting streams"
+      //      def reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      //      def writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+      log.debug "getting reader"
+      SocketReader reader = new SocketReader(socket.getInputStream());
+      log.debug "getting writer"
+      SocketWriter writer = new SocketWriter(socket.getOutputStream());
+      try {
+        log.debug "starting loop"
+        def close = false
+        while (!close) {
+          log.debug "about to handle one request"
+
+          handleOneRequest(reader, writer)
+          log.debug "handled one request"
         }
+        log.debug "ending loop"
+      } catch (RuntimeException e) {
+        log.error("there was an error ", e)
+        sendResponse(writer,
+          new Response(500, "Internal Server Error", null,
+                "The server encountered an unexpected condition which prevented it from fulfilling the request."))
       }
 
     } finally {
 
-//      socket.shutdownInput()
-//      socket.shutdownOutput()
-      socket.close()
+      //      socket.shutdownInput()
+      //      socket.shutdownOutput()
+      //      socket.close()
     }
+
+    log.debug "done processing"
+
   }
 
 
@@ -227,7 +242,7 @@ class DeproxyEndpoint {
   //        logger.debug('Finished shutting down "%s"' % self.name)
   //
   def shutdown() {
-    println "shutting down"
+    log.debug "shutting down"
 
     log.log(Level.FINE, "Shutting down ${_name}")
     if (serverThread) {
@@ -259,16 +274,19 @@ class DeproxyEndpoint {
   //
 
   //    def handle_one_request(self, rfile, wfile):
-  def handlerOneRequest(reader, writer) {
+  def handleOneRequest(reader, writer) {
     //        logger.debug('')
     //        close_connection = True
+    log.debug "Begin handleOneRequest"
     def closeConnection = true
     //        try:
     try {
       //            logger.debug('calling parse_request')
       //            ret = self.parse_request(rfile, wfile)
+      log.debug "calling parseRequest"
       def ret = parseRequest(reader, writer)
       //            logger.debug('returned from parse_request')
+      log.debug "returned from parseRequest"
       //            if not ret:
       //                return 1
       if (!ret) {
@@ -309,11 +327,13 @@ class DeproxyEndpoint {
         //            if request_id:
         //                logger.debug('The request has a request id: %s=%s' %
         //                             (request_id_header_name, request_id))
+        log.debug "the request has a request id: ${Deproxy.REQUEST_ID_HEADER_NAME}=${requestId}"
         //                message_chain = self.deproxy.get_message_chain(request_id)
         messageChain = _deproxy.getMessageChain(requestId)
         //            else:
       } else {
         //                logger.debug('The request does not have a request id')
+        log.debug "the request does not have a request id"
       }
       //
       //            # Handler resolution:
@@ -371,8 +391,10 @@ class DeproxyEndpoint {
       //
       //            logger.debug('calling handler')
       //            resp = handler(incoming_request)
+      log.debug "calling handler"
       response = handler(request)
       //            logger.debug('returned from handler')
+      log.debug "returned from handler"
       //
       //            add_default_headers = True
       //            if type(resp) == tuple:
@@ -466,87 +488,136 @@ class DeproxyEndpoint {
   }
 
   //    def parse_request(self, rfile, wfile):
-  //        logger.debug('reading request line')
-  //        request_line = rfile.readline(65537)
-  //        if len(request_line) > 65536:
-  //            self.send_error(wfile, 414, None, self.default_request_version)
-  //            return ()
-  //        if not request_line:
-  //            return ()
-  //
-  //        request_line = request_line.rstrip('\r\n')
-  //        logger.debug('request line is ok: "%s"' % request_line)
-  //
-  //        if request_line[-2:] == '\r\n':
-  //            request_line = request_line[:-2]
-  //        elif request_line[-1:] == '\n':
-  //            request_line = request_line[:-1]
-  //        words = request_line.split()
-  //        if len(words) == 3:
-  //            [method, path, version] = words
-  //            if version[:5] != 'HTTP/':
-  //                self.send_error(wfile, 400, method,
-  //                                self.default_request_version,
-  //                                "Bad request version (%r)" % version)
-  //                return ()
-  //            try:
-  //                base_version_number = version.split('/', 1)[1]
-  //                version_number = base_version_number.split(".")
-  //                # RFC 2145 section 3.1 says there can be only one "." and
-  //                # - major and minor numbers MUST be treated as
-  //                # separate integers;
-  //                # - HTTP/2.4 is a lower version than HTTP/2.13, which in
-  //                # turn is lower than HTTP/12.3;
-  //                # - Leading zeros MUST be ignored by recipients.
-  //                if len(version_number) != 2:
-  //                    raise ValueError
-  //                version_number = int(version_number[0]), int(version_number[1])
-  //            except (ValueError, IndexError):
-  //                self.send_error(wfile, 400, method,
-  //                                self.default_request_version,
-  //                                "Bad request version (%r)" % version)
-  //                return ()
-  //        elif len(words) == 2:
-  //            [method, path] = words
-  //            version = self.default_request_version
-  //            if method != 'GET':
-  //                self.send_error(wfile, 400, method,
-  //                                self.default_request_version,
-  //                                "Bad HTTP/0.9 request type (%r)" % method)
-  //                return ()
-  //        elif not words:
-  //            return ()
-  //        else:
-  //            self.send_error(wfile, 400, None,
-  //                            self.default_request_version,
-  //                            "Bad request syntax (%r)" % request_line)
-  //            return ()
-  //
-  //        logger.debug('checking HTTP protocol version')
-  //        if (version != 'HTTP/1.1' and
-  //                version != 'HTTP/1.0' and
-  //                version != 'HTTP/0.9'):
-  //            self.send_error(wfile, 505, method, self.default_request_version,
-  //                            "Invalid HTTP Version (%s)" % version)
-  //            return ()
-  //
-  //        logger.debug('parsing headers')
-  //        headers = HeaderCollection.from_stream(rfile)
-  //        for k, v in headers.iteritems():
-  //            logger.debug(' {0}: "{1}"'.format(k, v))
-  //
-  //        persistent_connection = False
-  //        if (version == 'HTTP/1.1' and
-  //                'Connection' in headers and
-  //                headers['Connection'] != 'close'):
-  //            persistent_connection = True
-  //
-  //        logger.debug('reading body')
-  //        body = read_body_from_stream(rfile, headers)
-  //
-  //        logger.debug('returning')
-  //        return (Request(method, path, headers, body), persistent_connection)
-  //
+  def parseRequest(reader, writer) {
+    //        logger.debug('reading request line')
+    log.debug "reading request line"
+    //        request_line = rfile.readline(65537)
+    def requestLine = reader.readLine()
+    //        if len(request_line) > 65536:
+    //            self.send_error(wfile, 414, None, self.default_request_version)
+    //            return ()
+    //        if not request_line:
+    //            return ()
+    if (!requestLine){
+      return []
+    }
+    //
+    //        request_line = request_line.rstrip('\r\n')
+    //        logger.debug('request line is ok: "%s"' % request_line)
+    log.debug "request line is ok: ${requestLine}"
+    //
+    //        if request_line[-2:] == '\r\n':
+    //            request_line = request_line[:-2]
+    //        elif request_line[-1:] == '\n':
+    //            request_line = request_line[:-1]
+    //        words = request_line.split()
+    def words = requestLine.split("\\s+")
+    //        if len(words) == 3:
+    if (words.size() == 3) {
+      //            [method, path, version] = words
+      def (method, path, version) = words
+      //            if version[:5] != 'HTTP/':
+      //                self.send_error(wfile, 400, method,
+      //                                self.default_request_version,
+      //                                "Bad request version (%r)" % version)
+      //                return ()
+      if (!version.startsWith("HTTP/")) {
+        sendResponse(writer, new Response(400, null, null, "Bad request version \"${version}\""))
+        return []
+      }
+      //            try:
+      //                base_version_number = version.split('/', 1)[1]
+      //                version_number = base_version_number.split(".")
+      //                # RFC 2145 section 3.1 says there can be only one "." and
+      //                # - major and minor numbers MUST be treated as
+      //                # separate integers;
+      //                # - HTTP/2.4 is a lower version than HTTP/2.13, which in
+      //                # turn is lower than HTTP/12.3;
+      //                # - Leading zeros MUST be ignored by recipients.
+      //                if len(version_number) != 2:
+      //                    raise ValueError
+      //                version_number = int(version_number[0]), int(version_number[1])
+      //            except (ValueError, IndexError):
+      //                self.send_error(wfile, 400, method,
+      //                                self.default_request_version,
+      //                                "Bad request version (%r)" % version)
+      //                return ()
+    }
+    //        elif len(words) == 2:
+    //            [method, path] = words
+    //            version = self.default_request_version
+    //            if method != 'GET':
+    //                self.send_error(wfile, 400, method,
+    //                                self.default_request_version,
+    //                                "Bad HTTP/0.9 request type (%r)" % method)
+    //                return ()
+    //        elif not words:
+    //            return ()
+    //        else:
+    else {
+      //            self.send_error(wfile, 400, None,
+      //                            self.default_request_version,
+      //                            "Bad request syntax (%r)" % request_line)
+      //            return ()
+      sendResponse(writer, new Response(400))
+      return []
+    }
+    //
+    //        logger.debug('checking HTTP protocol version')
+    //        if (version != 'HTTP/1.1' and
+    //                version != 'HTTP/1.0' and
+    //                version != 'HTTP/0.9'):
+    //            self.send_error(wfile, 505, method, self.default_request_version,
+    //                            "Invalid HTTP Version (%s)" % version)
+    //            return ()
+    log.debug "checking http protocol version: ${version}"
+    if (version != "HTTP/1.1" &&
+      version != "HTTP/1.0" &&
+      version != "HTTP/0.9") {
+
+      sendResponse(writer, new Response(505, null, null, "Invalid HTTP Version \"${version}\"}"))
+      return []
+    }
+    //
+    //        logger.debug('parsing headers')
+    log.debug "parsing headers"
+    //        headers = HeaderCollection.from_stream(rfile)
+    def headers = HeaderCollection.fromStream(reader)
+    //        for k, v in headers.iteritems():
+    //            logger.debug(' {0}: "{1}"'.format(k, v))
+    headers.each {
+      log.debug "  ${it.Name}: ${it.Value}"
+    }
+    //
+    //        persistent_connection = False
+    //        if (version == 'HTTP/1.1' and
+    //                'Connection' in headers and
+    //                headers['Connection'] != 'close'):
+    //            persistent_connection = True
+    //
+    def persistentConnection = false
+    if (version == "HTTP/1.1") {
+      persistentConnection = true
+      for (header in headers.findAll("Connection")) {
+        if (header.Value == "close") {
+          persistentConnection = false
+        }
+      }
+    }
+    //        logger.debug('reading body')
+    //        body = read_body_from_stream(rfile, headers)
+    log.debug "reading the body"
+    def body = Deproxy.readBody(reader, headers)
+    //
+    //        logger.debug('returning')
+    //        return (Request(method, path, headers, body), persistent_connection)
+    //
+    log.debug "returning"
+    return [
+      new Request(method, path, headers, body),
+      persistentConnection
+    ]
+  }
 
   //    def send_error(self, wfile, code, method, request_version, message=None):
   //        """Send and log an error reply.
@@ -589,46 +660,64 @@ class DeproxyEndpoint {
   //
 
   //    def send_response(self, wfile, response):
-  //        """
-  //Send the given Response over the socket. Add Server and Date headers
-  //if not already present.
-  //"""
-  //
-  //        message = response.message
-  //        if message is None:
-  //            if response.code in messages_by_response_code:
-  //                message = messages_by_response_code[response.code][0]
-  //            else:
-  //                message = ''
-  //        wfile.write("HTTP/1.1 %s %s\r\n" %
-  //                    (response.code, message))
-  //
-  //        for name, value in response.headers.iteritems():
-  //            wfile.write("%s: %s\r\n" % (name, value))
-  //        wfile.write("\r\n")
-  //
-  //        if response.body is not None and len(response.body) > 0:
-  //            logger.debug('Send the response body, len: %s',
-  //                         len(response.body))
-  //            wfile.write(response.body)
-  //
+  def sendResponse(writer, response) {
+    //        """
+    //Send the given Response over the socket. Add Server and Date headers
+    //if not already present.
+    //"""
+    //
+    //        message = response.message
+    //        if message is None:
+    //            if response.code in messages_by_response_code:
+    //                message = messages_by_response_code[response.code][0]
+    //            else:
+    //                message = ''
+    if (response.message == null) {
+      response.message = ""
+    }
+    //        wfile.write("HTTP/1.1 %s %s\r\n" %
+    //                    (response.code, message))
+    writer.write("HTTP/1.1 ${response.code} ${response.message}")
+    writer.write("\r\n")
+    //
+    //        for name, value in response.headers.iteritems():
+    //            wfile.write("%s: %s\r\n" % (name, value))
+    response.headers.each {
+      writer.write("${it.Name}: ${it.Value}")
+      writer.write("\r\n")
+    }
+    //        wfile.write("\r\n")
+    writer.write("\r\n")
+    //
+    //        if response.body is not None and len(response.body) > 0:
+    //            logger.debug('Send the response body, len: %s',
+    //                         len(response.body))
+    //            wfile.write(response.body)
+    if (response.body != null && response.body.length() > 0) {
+      writer.write(response.body)
+    }
+    //
+  }
 
   //    def date_time_string(self, timestamp=None):
-  //        """Return the current date and time formatted for a message header."""
-  //        if timestamp is None:
-  //            timestamp = time.time()
-  //        year, month, day, hh, mm, ss, wd, y, z = time.gmtime(timestamp)
-  //
-  //        weekdayname = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  //        monthname = [None,
-  //                     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  //                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  //
-  //        s = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (weekdayname[wd], day,
-  //                                                     monthname[month], year,
-  //                                                     hh, mm, ss)
-  //        return s
-  //
-  //
+  def datetimeString(timestamp=null) {
+    //        """Return the current date and time formatted for a message header."""
+    //        if timestamp is None:
+    //            timestamp = time.time()
+    //        year, month, day, hh, mm, ss, wd, y, z = time.gmtime(timestamp)
+    //
+    //        weekdayname = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    //        monthname = [None,
+    //                     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    //                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    //
+    //        s = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (weekdayname[wd], day,
+    //                                                     monthname[month], year,
+    //                                                     hh, mm, ss)
+    //        return s
+    //
+    //
+    throw new UnsupportedOperationException("Not implemented")
+  }
 
 }

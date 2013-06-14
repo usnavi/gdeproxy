@@ -34,7 +34,7 @@ class MessageChain {
     //        self.handlings = []
     //        self.orphaned_handlings = []
     //        self.lock = threading.Lock()
-      
+
   }
 
   def addHandling(handling) {

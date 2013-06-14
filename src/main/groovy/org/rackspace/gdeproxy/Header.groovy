@@ -7,8 +7,8 @@ package org.rackspace.gdeproxy
 
 /**
  *
- * @author ricahrd-sartor 
- * 
+ * @author ricahrd-sartor
+ *
  * A simple name-value pair.
  *
  */

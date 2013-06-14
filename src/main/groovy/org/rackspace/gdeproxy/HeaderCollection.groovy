@@ -10,35 +10,35 @@ import java.util.List;
 
 /**
  *
- * @author ricahrd-sartor 
- * 
- * A collection class for HTTP Headers. This class combines aspects of a list 
- * and a map. Lookup is always case-insenitive. A key can be added multiple 
- * times with different values, and all of those values will be kept in the 
+ * @author ricahrd-sartor
+ *
+ * A collection class for HTTP Headers. This class combines aspects of a list
+ * and a map. Lookup is always case-insenitive. A key can be added multiple
+ * times with different values, and all of those values will be kept in the
  * same order as entered.
  *
  */
-public class HeaderCollection {
+class HeaderCollection {
 
-  
+
   List<Header> _headers = new ArrayList<Header>();
 
-  public HeaderCollection() { 
+  HeaderCollection() {
   }
-  
-  public HeaderCollection(Map<? extends Object, ? extends Object> map){
+
+  HeaderCollection(Map<? extends Object, ? extends Object> map){
     for (entry in map.entrySet) {
       this.add(entry.getKey().toString(), entry.getValue().toString())
     }
   }
-  
-  public HeaderCollection(HeaderCollection headers){
+
+  HeaderCollection(HeaderCollection headers){
     for (header in headers._headers) {
       this.add(new Header(header.Name, header.Value))
     }
   }
 
-  public boolean Contains(String name) {
+  boolean Contains(String name) {
     for (Header header : _headers) {
       if (name.equalsIgnoreCase(header.Name)) {
         return true;
@@ -47,13 +47,13 @@ public class HeaderCollection {
 
     return false;
   }
-  
-  @Override
+
+//  @Override
   public Object each(Closure closure) {
     return _headers.each(closure)
   }
-  
-  @Override
+
+//  @Override
   public Object eachWithIndex(Closure closure) {
     return _headers.eachWithIndex(closure)
   }
@@ -66,7 +66,7 @@ public class HeaderCollection {
   public void add(String name, String value) {
     add(new Header(name, value));
   }
-  
+
   public void add(Header header) {
     _headers.add(header)
   }

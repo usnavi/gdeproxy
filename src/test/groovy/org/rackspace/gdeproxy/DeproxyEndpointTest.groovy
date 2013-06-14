@@ -33,7 +33,7 @@ class DeproxyEndpointTest extends Specification {
         client.withStreams { input, output ->
             output << "echo testing...\n"
             buffer = input.newReader().readLine()
-            println "response = $buffer"
+            log.debug "response = $buffer"
         }
 
         then:
