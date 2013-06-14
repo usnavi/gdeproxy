@@ -5,14 +5,14 @@ class Handler {
 
     // Handler function.
     // Returns a 200 OK Response, with no additional headers or response body.
-    def simple_handler(request) {
-        return Response(200, 'OK', {}, '')
+    static def simple_handler(request) {
+        return new Response(200, 'OK')
     }
 
     // Handler function.
     // Returns a 200 OK Response, with the same headers and body as the request.
-    def echo_handler(request) {
-        return Response(200, 'OK', request.headers, request.body)
+    static def echo_handler(request) {
+        return new Response(200, 'OK', request.headers, request.body)
     }
 
 //  def delay(timeout, next_handler=simple_handler):

@@ -43,7 +43,7 @@ public class SocketReader extends InputStreamReader {
 
     while (true) {
 
-      int value0 = this.__stream.read();
+//      int value0 = this.__stream.read();
       int value = this.read();
 
       if (value == -1) {

@@ -38,7 +38,7 @@ class HeaderCollection {
     }
   }
 
-  boolean Contains(String name) {
+  boolean contains(String name) {
     for (Header header : _headers) {
       if (name.equalsIgnoreCase(header.Name)) {
         return true;
@@ -76,7 +76,7 @@ class HeaderCollection {
     def values = []
 
     _headers.each {
-      if (it.name.equalsIgnoreCase(name)){
+      if (it.Name.equalsIgnoreCase(name)){
         values += it.value
       }
     }
@@ -115,7 +115,11 @@ class HeaderCollection {
     return values.toArray(new String[0]);
   }
 
-  public String getFirstValue(String name, String defaultValue) {
+  public Header[] getItems() {
+    return _headers.toArray(new Header[0]);
+  }
+
+  public String getFirstValue(String name, String defaultValue=null) {
     for (Header header : _headers) {
       if (name.equalsIgnoreCase(header.Name)) {
         return header.Value;
@@ -125,7 +129,7 @@ class HeaderCollection {
     return defaultValue;
   }
 
-  public static HeaderCollection fromReader(BufferedReader reader) throws IOException {
+  public static HeaderCollection fromReader(reader) throws IOException {
 
     HeaderCollection headers = new HeaderCollection();
     String line = reader.readLine();

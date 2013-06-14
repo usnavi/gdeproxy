@@ -70,17 +70,6 @@ class Response {
     this.body = body.toString()
   }
 
-  def getHeader(String name) {
-    def String foundValue
-
-    headers.each { header ->
-      if (header.name.equals(name)) {
-        foundValue = header.value
-      }
-    }
-    return foundValue
-  }
-
   @Override
   String toString() {
     sprintf('Response(code=%r, message=%r, headers=%r, body=%r)', code, message, headers, body)

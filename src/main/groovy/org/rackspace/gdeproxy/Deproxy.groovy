@@ -14,7 +14,7 @@ class Deproxy {
   //    """The main class."""
   //
 
-  String REQUEST_ID_HEADER_NAME = 'Deproxy-Request-ID'
+  public static final String REQUEST_ID_HEADER_NAME = 'Deproxy-Request-ID';
   def _messageChainsLock = new ReentrantLock()
   def _messageChains = [:]
   def _endpointLock = new ReentrantLock()
@@ -95,7 +95,7 @@ class Deproxy {
     //        request_id = str(uuid.uuid4())
     def requestId =  UUID.randomUUID().toString()
     //        if request_id_header_name not in headers:
-    if (!headers.Contains(REQUEST_ID_HEADER_NAME)){
+    if (!headers.contains(REQUEST_ID_HEADER_NAME)){
       //            headers.add(request_id_header_name, request_id)
       headers.add(REQUEST_ID_HEADER_NAME, requestId)
     }
@@ -124,30 +124,30 @@ class Deproxy {
     //        if len(request_body) > 0:
     if (requestBody == null || requestBody.length() < 1) {
       //            headers.add('Content-Length', len(request_body))
-      headers.add("Content-Length", requestBody.length().toString())
+      headers.add("Content-Length", "0")
     }
     //
     //        if add_default_headers:
     if (addDefaultHeaders){
       //            if 'Host' not in headers:
       //                headers.add('Host', host)
-      if (!headers.Contains("Host")){
+      if (!headers.contains("Host")){
         headers.add("Host", host)
       }
       //            if 'Accept' not in headers:
       //                headers.add('Accept', '*/*')
-      if (!headers.Contains("Accept")){
+      if (!headers.contains("Accept")){
         headers.add("Accept", "*/*")
       }
       //            if 'Accept-Encoding' not in headers:
       //                headers.add('Accept-Encoding',
       //                            'identity, deflate, compress, gzip')
-      if (!headers.Contains("Accept-Encoding")){
+      if (!headers.contains("Accept-Encoding")){
         headers.add("Accept-Encoding", "identity")
       }
       //            if 'User-Agent' not in headers:
       //                headers.add('User-Agent', version_string)
-      if (!headers.Contains("User-Agent")){
+      if (!headers.contains("User-Agent")){
         headers.add("User-Agent", "TODO: versionString")
       }
       //
@@ -196,29 +196,9 @@ class Deproxy {
     //        request_line = '%s %s HTTP/1.1\r\n' % (request.method, request.path)
     def requestLine = String.format("%s %s HTTP/1.1", request.method, request.path)
     //        lines = [request_line]
-    def lines = [requestLine]
     //
     //        for name, value in request.headers.iteritems():
     //            lines.append('%s: %s\r\n' % (name, value))
-    request.headers.each{
-      lines += String.format("%s: %s", it.Name, it.Value)
-    }
-
-    //        lines.append('\r\n')
-    lines += ""
-    //        if request.body is not None and len(request.body) > 0:
-    if (request.body != null & request.body != "") {
-      //            lines.append(request.body)
-      lines += request.body
-    }
-    //
-    //        #for line in lines:
-    //        # logger.debug(' ' + line)
-    //
-    //        logger.debug('Creating connection (hostname="%s", port="%s")' %
-    //                     (hostname, str(port)))
-    //
-    //        address = (hostname, port)
     log.debug "creating socket: host=${host}, port=${port}"
 
     Socket s;
@@ -232,20 +212,50 @@ class Deproxy {
       s = new Socket(host, port)
     }
 
+    //    def writer = new SocketWriter(new CountingOutputStream(s.getOutputStream()))
+    def writer = new PrintWriter(s.getOutputStream(), true);
+
+    writer.write(requestLine);
+    writer.write("\r\n");
+    log.debug "Sending \"${requestLine}\""
+
+    for (Header header : request.headers.getItems()) {
+      writer.write("${header.Name}: ${header.Value}");
+      writer.write("\r\n");
+      log.debug "Sending \"${header.Name}: ${header.Value}\""
+    }
+
+    //        lines.append('\r\n')
+    writer.write("");
+    writer.write("\r\n");
+    log.debug "Sending \"\""
+
+    //        if request.body is not None and len(request.body) > 0:
+    if (request.body != null & request.body != "") {
+      //            lines.append(request.body)
+      writer.write(request.body);
+      log.debug "Sending body, length = ${request.body.length}:"
+
+    }
+    //
+    //        #for line in lines:
+    //        # logger.debug(' ' + line)
+    //
+    //        logger.debug('Creating connection (hostname="%s", port="%s")' %
+    //                     (hostname, str(port)))
+    //
+    //        address = (hostname, port)
+
     //
     //        s.send(''.join(lines))
-    log.debug "sending lines"
-    lines.each {
-      log.debug "  :${it}:"
-    }
-    def writer = new SocketWriter(s.getOutputStream())
-    lines.each {
-      writer.writeln(it)
-    }
+    log.debug "flush()"
+    writer.flush();
 
     //
     //        rfile = s.makefile('rb', -1)
-    def reader = new SocketReader(s.getInputStream())
+    log.debug "creating socket reader"
+//    def reader = new SocketReader(new CountingInputStream(s.getInputStream()))
+    def reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
     //
     //        logger.debug('Reading response line')
     log.debug "reading response line"
@@ -259,7 +269,7 @@ class Deproxy {
     //
     //        words = response_line.split()
     def words = responseLine.split("\\s+", 3)
-    if (words.length() != 3)
+    if (words.size() != 3)
     {
       throw new RuntimeException()
     }
@@ -279,14 +289,14 @@ class Deproxy {
     //        for k,v in response_headers.iteritems():
     //            logger.debug(' %s: %s', k, v)
     headers.each {
-          log.debug "  ${it.Name}: ${it.Value}"
+      log.debug "  ${it.Name}: ${it.Value}"
     }
 
     //
     //        logger.debug('Reading body')
     //        body = read_body_from_stream(rfile, response_headers)
     log.debug "reading body"
-    def body = readBodyfromStream(reader, headers)
+    def body = readBody(reader, headers)
     //
     //        logger.debug('Creating Response object')
     //        response = Response(code, message, response_headers, body)
@@ -446,7 +456,7 @@ class Deproxy {
     //        # 3
     //        length = int(headers['Content-Length'])
     //        body = stream.read(length)
-    if (headers.containsKey("Content-Length")) {
+    if (headers.contains("Content-Length")) {
       int length = headers.getFirstValue("Content-Length").toInteger()
       //TODO: this is reading characters, but according to the spec, Content-Length is a count of octets.
       char[] data = new char[length]

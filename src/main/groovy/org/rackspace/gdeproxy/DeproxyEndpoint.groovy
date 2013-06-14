@@ -11,6 +11,10 @@ import static org.linkedin.groovy.util.concurrent.GroovyConcurrentUtils.waitForC
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.util.logging.Logger;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * A class that acts as a mock HTTP server.
@@ -81,26 +85,14 @@ class DeproxyEndpoint {
     _defaultHandler = defaultHandler
     //
 
-    serverThread = Thread.startDaemon("Thread-${name}") {
+    //    serverThread = Thread.startDaemon("Thread-${name}") {
+    serverSocket = new ServerSocket(port)
+    //      serverSocket.setReuseAddress(true)
+    //      serverSocket.setSoTimeout(5000)
+    //      serverSocket.bind(new InetSocketAddress(port))
+    serverThread = new DeproxyEndpointListenerThread(this, serverSocket, "Thread-${name}");
+    serverThread.start();
 
-      serverSocket = new ServerSocket(port)
-      //      serverSocket.setReuseAddress(true)
-      //      serverSocket.setSoTimeout(5000)
-      //      serverSocket.bind(new InetSocketAddress(port))
-
-      while (!serverThread.isInterrupted()) {
-        try {
-
-          Socket conn = serverSocket.accept();
-          conn.setSoTimeout(1000);
-          Thread.startDaemon("Thread-${name}-connection") {
-            processNewConnection(conn)
-          }
-        } catch (SocketTimeoutException e) {
-          log.debug "Caught a timeout exception: " + e.toString()
-        }
-      }
-    }
 
     waitForCondition(clock, '5s', '1s', {
         isListening()
@@ -136,20 +128,19 @@ class DeproxyEndpoint {
     log.debug "processing new connection..."
 
     try {
-      log.debug "getting streams"
-      //      def reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-      //      def writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
       log.debug "getting reader"
-      SocketReader reader = new SocketReader(socket.getInputStream());
+      //SocketReader reader = new SocketReader(new CountingInputStream(socket.getInputStream()));
+      def reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
       log.debug "getting writer"
-      SocketWriter writer = new SocketWriter(socket.getOutputStream());
+      //SocketWriter writer = new SocketWriter(new CountingOutputStream(socket.getOutputStream()));
+      def writer = new PrintWriter(socket.getOutputStream(), true);
       try {
         log.debug "starting loop"
         def close = false
         while (!close) {
           log.debug "about to handle one request"
 
-          handleOneRequest(reader, writer)
+          close = handleOneRequest(reader, writer)
           log.debug "handled one request"
         }
         log.debug "ending loop"
@@ -244,13 +235,13 @@ class DeproxyEndpoint {
   def shutdown() {
     log.debug "shutting down"
 
-    log.log(Level.FINE, "Shutting down ${_name}")
+    log.debug "Shutting down ${_name}"
     if (serverThread) {
       serverThread.interrupt()
     }
     if (serverSocket)
     serverSocket.close()
-    log.log(Level.FINE, "Finished shutting down ${_name}")
+    log.debug "Finished shutting down ${_name}"
   }
 
 
@@ -304,7 +295,7 @@ class DeproxyEndpoint {
         //                if conn_value:
         //                    if conn_value.lower() == 'close':
         //                        close_connection = True
-        if (request.headers.containsName('Connection')) {
+        if (request.headers.contains('Connection')) {
           request.headers.findAll('Connection').each{
             if (it == "close") {
               closeConnection = true
@@ -359,40 +350,35 @@ class DeproxyEndpoint {
       //            else:
       //                # last resort
       //                handler = simple_handler
+      def handler
       if (messageChain &&
         messageChain.handlers &&
         messageChain.handlers.containsKey(this)) {
 
         handler = messageChain.handlers[this]
 
-      } else if (messageChain &&
-        messageChain.handlers &&
-        messageChain.handlers.containsKey(this.name)) {
-
-        handler = messageChain.handlers[this.name]
-
       } else if (messageChain && messageChain.defaultHandler){
 
         handler = messageChain.defaultHandler
 
-      } else if (defaultHandler) {
+      } else if (_defaultHandler) {
 
-        handler = defaultHandler
+        handler = _defaultHandler
 
-      } else if (deproxy.defaultHandler) {
+      } else if (_deproxy._defaultHandler) {
 
-        handler = deproxy.defaultHandler
+        handler = _deproxy._defaultHandler
 
       } else {
 
-        handler = Handler.simple_handler
+        handler = Handler.&simple_handler
 
       }
       //
       //            logger.debug('calling handler')
       //            resp = handler(incoming_request)
       log.debug "calling handler"
-      response = handler(request)
+      def response = handler(request)
       //            logger.debug('returned from handler')
       log.debug "returned from handler"
       //
@@ -403,7 +389,7 @@ class DeproxyEndpoint {
       //                if len(resp) > 1:
       //                    add_default_headers = resp[1]
       //                resp = resp[0]
-      addDefaultHeaders = true
+      def addDefaultHeaders = true
       if (response instanceof List){
         if (response.size() > 1){
           addDefaultHeaders = response[1]
@@ -415,7 +401,7 @@ class DeproxyEndpoint {
       //            if (resp.body is not None and
       //                    'Content-Length' not in resp.headers):
       //                resp.headers.add('Content-Length', len(resp.body))
-      if (response.body && !response.headers.containsName("Content-Length")) {
+      if (response.body && !response.headers.contains("Content-Length")) {
         response.headers.add("Content-Length", response.body.length())
       }
       //
@@ -427,10 +413,10 @@ class DeproxyEndpoint {
       //            else:
       //                logger.debug('Don\'t add default response headers.')
       if (addDefaultHeaders){
-        if (!response.headers.containsName("Server")) {
-          response.headers.add("Server", versionString)
+        if (!response.headers.contains("Server")) {
+          response.headers.add("Server", "TODO: versionString")
         }
-        if (!response.headers.containsName("Date")) {
+        if (!response.headers.contains("Date")) {
           response.headers.add("Date", datetimeString())
         }
       }
@@ -438,7 +424,7 @@ class DeproxyEndpoint {
       //            found = resp.headers.get(request_id_header_name)
       //            if not found and request_id is not None:
       //                resp.headers[request_id_header_name] = request_id
-      if (requestId && !response.headers.containsName(Deproxy.REQUEST_ID_HEADER_NAME)) {
+      if (requestId && !response.headers.contains(Deproxy.REQUEST_ID_HEADER_NAME)) {
         response.headers.add(Deproxy.REQUEST_ID_HEADER_NAME, requestId)
       }
       //
@@ -467,7 +453,7 @@ class DeproxyEndpoint {
       //                    if conn_value.lower() == 'close':
       //                        close_connection = True
       if (persistConnection && !closeConnection) {
-        if (request.headers.containsName('Connection')) {
+        if (request.headers.contains('Connection')) {
           request.headers.findAll('Connection').each{
             if (it == "close") {
               closeConnection = true
@@ -477,9 +463,11 @@ class DeproxyEndpoint {
       }
       //
       //        except socket.timeout, e:
-    } catch (SocketTimeoutException e) {
-      //            close_connection = True
-      closeConnection = true
+      //    } catch (SocketTimeoutException e) {
+      //      //            close_connection = True
+      //      closeConnection = true
+    } finally {
+
     }
     //
     //        return close_connection
@@ -512,10 +500,18 @@ class DeproxyEndpoint {
     //            request_line = request_line[:-1]
     //        words = request_line.split()
     def words = requestLine.split("\\s+")
+    log.debug "${words}"
     //        if len(words) == 3:
+    def version
+    def method
+    def path
     if (words.size() == 3) {
       //            [method, path, version] = words
-      def (method, path, version) = words
+      method = words[0]
+      path = words[1]
+      version = words[2]
+
+      log.debug "${method}, ${path}, ${version}"
       //            if version[:5] != 'HTTP/':
       //                self.send_error(wfile, 400, method,
       //                                self.default_request_version,
@@ -582,7 +578,7 @@ class DeproxyEndpoint {
     //        logger.debug('parsing headers')
     log.debug "parsing headers"
     //        headers = HeaderCollection.from_stream(rfile)
-    def headers = HeaderCollection.fromStream(reader)
+    def headers = HeaderCollection.fromReader(reader)
     //        for k, v in headers.iteritems():
     //            logger.debug(' {0}: "{1}"'.format(k, v))
     headers.each {
@@ -598,8 +594,8 @@ class DeproxyEndpoint {
     def persistentConnection = false
     if (version == "HTTP/1.1") {
       persistentConnection = true
-      for (header in headers.findAll("Connection")) {
-        if (header.Value == "close") {
+      for (value in headers.findAll("Connection")) {
+        if (value == "close") {
           persistentConnection = false
         }
       }
@@ -697,10 +693,11 @@ class DeproxyEndpoint {
       writer.write(response.body)
     }
     //
+    writer.flush()
   }
 
   //    def date_time_string(self, timestamp=None):
-  def datetimeString(timestamp=null) {
+  def datetimeString() {
     //        """Return the current date and time formatted for a message header."""
     //        if timestamp is None:
     //            timestamp = time.time()
@@ -717,7 +714,11 @@ class DeproxyEndpoint {
     //        return s
     //
     //
-    throw new UnsupportedOperationException("Not implemented")
+    Calendar calendar = Calendar.getInstance();
+    SimpleDateFormat dateFormat = new SimpleDateFormat(
+        "EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+    dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+    return dateFormat.format(calendar.getTime());
   }
 
 }
