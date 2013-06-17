@@ -7,6 +7,7 @@ package org.rackspace.gdeproxy;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import org.apache.log4j.Logger;
 
 /**
@@ -17,7 +18,6 @@ public class DeproxyEndpointListenerThread extends Thread {
 
   DeproxyEndpoint _parent;
   ServerSocket _socket;
-
   Logger log = Logger.getLogger(DeproxyEndpointListenerThread.class.getName());
 
   public DeproxyEndpointListenerThread(DeproxyEndpoint parent, ServerSocket socket, String name) {
@@ -31,10 +31,19 @@ public class DeproxyEndpointListenerThread extends Thread {
   public void run() {
 
     Integer connection = 0;
-//    while (!this.isInterrupted()) {
+    while (!_socket.isClosed()) {
       try {
 
-        Socket conn = _socket.accept();
+        Socket conn;
+        try {
+          conn = _socket.accept();
+        } catch (SocketException e) {
+          if (_socket.isClosed()) {
+            break;
+          } else {
+            throw e;
+          }
+        }
         log.debug("Accepted a new connection");
 
 //          conn.setSoTimeout(1000);
@@ -48,6 +57,6 @@ public class DeproxyEndpointListenerThread extends Thread {
       } catch (IOException ex) {
         log.error(null, ex);
       }
-//    }
+    }
   }
 }

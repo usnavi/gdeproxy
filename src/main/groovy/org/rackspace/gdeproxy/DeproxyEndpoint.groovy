@@ -84,7 +84,7 @@ class DeproxyEndpoint {
     //        self.default_handler = default_handler
     _defaultHandler = defaultHandler
     //
-        serverThread = new Thread("Thread-${name}")
+    serverThread = new Thread("Thread-${name}")
 
     //    serverThread = Thread.startDaemon("Thread-${name}") {
     serverSocket = new ServerSocket(port)
@@ -126,13 +126,15 @@ class DeproxyEndpoint {
   //
   def processNewConnection(Socket socket) {
     log.debug "processing new connection..."
+    def reader;
+    def writer;
     try {
       log.debug "getting reader"
       //SocketReader reader = new SocketReader(new CountingInputStream(socket.getInputStream()));
-      def reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
       log.debug "getting writer"
       //SocketWriter writer = new SocketWriter(new CountingOutputStream(socket.getOutputStream()));
-      def writer = new PrintWriter(socket.getOutputStream(), true);
+      writer = new PrintWriter(socket.getOutputStream(), true);
       try {
         log.debug "starting loop"
         def close = false
@@ -152,10 +154,10 @@ class DeproxyEndpoint {
 
     } finally {
 
-      //      socket.shutdownInput()
-      //      socket.shutdownOutput()
-        reader.close()
-        socket.close()
+      //socket.shutdownInput()
+      //socket.shutdownOutput()
+      //reader.close()
+      //socket.close()
     }
 
     log.debug "done processing"
@@ -487,7 +489,7 @@ class DeproxyEndpoint {
     //        if not request_line:
     //            return ()
     if (!requestLine){
-        log.debug "request line is null: ${requestLine}"
+      log.debug "request line is null: ${requestLine}"
 
       return []
     }
