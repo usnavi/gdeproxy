@@ -14,13 +14,15 @@ class Deproxy {
   //    """The main class."""
   //
 
-  public static final String REQUEST_ID_HEADER_NAME = 'Deproxy-Request-ID';
+  public static final String REQUEST_ID_HEADER_NAME = "Deproxy-Request-ID";
   def _messageChainsLock = new ReentrantLock()
   def _messageChains = [:]
   def _endpointLock = new ReentrantLock()
   def _endpoints = []
   def _defaultHandler = null
 
+  public static final String VERSION = "0.9";
+  public static final String VERSION_STRING = String.format("gdeproxy %s", VERSION);
 
   Deproxy(defaultHandler = null) {
 
@@ -148,7 +150,7 @@ class Deproxy {
       //            if 'User-Agent' not in headers:
       //                headers.add('User-Agent', version_string)
       if (!headers.contains("User-Agent")){
-        headers.add("User-Agent", "TODO: versionString")
+        headers.add("User-Agent", VERSION_STRING)
       }
       //
     }

@@ -414,7 +414,7 @@ class DeproxyEndpoint {
       //                logger.debug('Don\'t add default response headers.')
       if (addDefaultHeaders){
         if (!response.headers.contains("Server")) {
-          response.headers.add("Server", "TODO: versionString")
+          response.headers.add("Server", Deproxy.VERSION_STRING)
         }
         if (!response.headers.contains("Date")) {
           response.headers.add("Date", datetimeString())
