@@ -84,6 +84,7 @@ class DeproxyEndpoint {
     //        self.default_handler = default_handler
     _defaultHandler = defaultHandler
     //
+        serverThread = new Thread("Thread-${name}")
 
     //    serverThread = Thread.startDaemon("Thread-${name}") {
     serverSocket = new ServerSocket(port)
@@ -92,7 +93,6 @@ class DeproxyEndpoint {
     //      serverSocket.bind(new InetSocketAddress(port))
     serverThread = new DeproxyEndpointListenerThread(this, serverSocket, "Thread-${name}");
     serverThread.start();
-
 
     waitForCondition(clock, '5s', '1s', {
         isListening()
@@ -126,7 +126,6 @@ class DeproxyEndpoint {
   //
   def processNewConnection(Socket socket) {
     log.debug "processing new connection..."
-
     try {
       log.debug "getting reader"
       //SocketReader reader = new SocketReader(new CountingInputStream(socket.getInputStream()));
@@ -155,7 +154,8 @@ class DeproxyEndpoint {
 
       //      socket.shutdownInput()
       //      socket.shutdownOutput()
-      //      socket.close()
+        reader.close()
+        socket.close()
     }
 
     log.debug "done processing"
@@ -235,13 +235,13 @@ class DeproxyEndpoint {
   def shutdown() {
     log.debug "shutting down"
 
-    log.debug "Shutting down ${_name}"
+    log.debug("Shutting down ${_name}")
     if (serverThread) {
       serverThread.interrupt()
     }
     if (serverSocket)
     serverSocket.close()
-    log.debug "Finished shutting down ${_name}"
+    log.debug("Finished shutting down ${_name}")
   }
 
 
@@ -487,6 +487,8 @@ class DeproxyEndpoint {
     //        if not request_line:
     //            return ()
     if (!requestLine){
+        log.debug "request line is null: ${requestLine}"
+
       return []
     }
     //
