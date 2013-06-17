@@ -41,10 +41,25 @@ class Deproxy {
     //
   }
 
-  public MessageChain makeRequest(String url, String method = "GET", headers = null,
-    String requestBody = "", defaultHandler = null,
-    Map<DeproxyEndpoint, Object> handlers = null,
-    boolean addDefaultHeaders=true) {
+  public MessageChain makeRequest(Map params) {
+    return makeRequest(
+      params?.url,
+      params?.method,
+      params?.headers,
+      params?.requestBody,
+      params?.defaultHandler,
+      params?.handlers,
+      params?.addDefaultHeaders
+    );
+  }
+  public MessageChain makeRequest(
+    String url,
+    String method="GET",
+    headers=null,
+    String requestBody="",
+    defaultHandler=null,
+    handlers=null,
+    addDefaultHeaders=true) {
     //    def make_request(self, url, method='GET', headers=None, request_body='',
     //                     default_handler=None, handlers=None,
     //                     add_default_headers=True):

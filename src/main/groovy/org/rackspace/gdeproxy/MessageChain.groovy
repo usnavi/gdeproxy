@@ -34,7 +34,8 @@ class MessageChain {
     //        self.handlings = []
     //        self.orphaned_handlings = []
     //        self.lock = threading.Lock()
-
+    this.defaultHandler = defaultHandler;
+    this.handlers = handlers;
   }
 
   def addHandling(handling) {
@@ -50,7 +51,7 @@ class MessageChain {
   }
 
   String toString() {
-    sprintf('MessageChain(handler_function=%r, sent_request=%r, handlings=%r, received_response=%r, orphaned_handlings=%r)',
+    sprintf('MessageChain(handler_function=%s, sent_request=%s, handlings=%s, received_response=%s, orphaned_handlings=%s)',
       handlerFunction, sentRequest, handlings, receivedResponse, orphanedHandlings)
   }
 }

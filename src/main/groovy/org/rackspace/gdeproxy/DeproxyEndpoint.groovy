@@ -146,7 +146,7 @@ class DeproxyEndpoint {
         }
         log.debug "ending loop"
       } catch (RuntimeException e) {
-        log.error("there was an error ", e)
+        log.error("there was an error", e)
         sendResponse(writer,
           new Response(500, "Internal Server Error", null,
                 "The server encountered an unexpected condition which prevented it from fulfilling the request."))
@@ -373,7 +373,7 @@ class DeproxyEndpoint {
 
       } else {
 
-        handler = Handler.&simple_handler
+        handler = Handlers.&simpleHandler
 
       }
       //

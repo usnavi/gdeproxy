@@ -32,7 +32,7 @@ class Request {
   }
 
   String toString() {
-    sprintf('Request(method=%r, path=%r, headers=%r, body=%r)', method, path, headers, body);
+    sprintf('Request(method=%s, path=%s, headers=%s, body=%s)', method, path, headers, body);
   }
 
 }

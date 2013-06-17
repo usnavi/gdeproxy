@@ -72,7 +72,7 @@ class Response {
 
   @Override
   String toString() {
-    sprintf('Response(code=%r, message=%r, headers=%r, body=%r)', code, message, headers, body)
+    sprintf('Response(code=%s, message=%s, headers=%s, body=%s)', code, message, headers, body)
   }
 }
 

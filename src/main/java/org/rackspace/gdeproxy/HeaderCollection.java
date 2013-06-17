@@ -59,6 +59,10 @@ class HeaderCollection {
     return _headers.size();
   }
 
+  public void add(Object name, Object value) {
+    add(new Header(name.toString(), value.toString()));
+  }
+
   public void add(String name, String value) {
     add(new Header(name, value));
   }
