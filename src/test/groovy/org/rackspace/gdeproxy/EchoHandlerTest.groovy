@@ -1,34 +1,20 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
-/**
- *
- * @author richard-sartor
- */
+package org.rackspace.gdeproxy
+
+import org.junit.*;
+import static org.junit.Assert.*;
+
+
 class EchoHandlerTest {
 
-}
+  @Test
+  public void testEchoHandler() {
 
-//class TestEchoHandler(unittest.TestCase):
-//    def setUp(self):
-//        self.deproxy_port = get_next_deproxy_port()
-//        self.deproxy = deproxy.Deproxy()
-//        self.end_point = self.deproxy.add_endpoint(self.deproxy_port)
-//
-//    def tearDown(self):
-//        self.deproxy.shutdown_all_endpoints()
-//
-//    def test_echo_handler(self):
-//        headers = {'x-header': '12345'}
-//        mc = self.deproxy.make_request('http://localhost:%i/' %
-//                                       self.deproxy_port, headers=headers,
-//                                       request_body='this is the body',
-//                                       default_handler=deproxy.echo_handler)
-//        self.assertEquals(int(mc.received_response.code), 200)
-//        self.assertIn('x-header', mc.received_response.headers)
-//        self.assertEquals(mc.received_response.headers['x-header'], '12345')
-//        self.assertEquals(mc.received_response.body, 'this is the body')
-//
-//
+    def response = Handlers.echoHandler(new Request("GET", "/", ["x-header": 12345], "this is the body"));
+
+    assertEquals("200", response.code);
+    assertTrue(response.headers.contains("x-header"));
+    assertEquals("12345", response.headers.getFirstValue("x-header"));
+    assertEquals("this is the body", response.body);
+  }
+}
