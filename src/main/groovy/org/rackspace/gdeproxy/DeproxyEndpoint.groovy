@@ -496,7 +496,7 @@ class DeproxyEndpoint {
     //
     //        request_line = request_line.rstrip('\r\n')
     //        logger.debug('request line is ok: "%s"' % request_line)
-    log.debug "request line is ok: ${requestLine}"
+    log.debug "request line is not null: ${requestLine}"
     //
     //        if request_line[-2:] == '\r\n':
     //            request_line = request_line[:-2]

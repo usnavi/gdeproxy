@@ -211,7 +211,7 @@ class Deproxy {
     def hostIP = InetAddress.getByName(host)
     //
     //        request_line = '%s %s HTTP/1.1\r\n' % (request.method, request.path)
-    def requestLine = String.format("%s %s HTTP/1.1", request.method, request.path)
+    def requestLine = String.format("%s %s HTTP/1.1", request.method, request.path ?: "/")
     //        lines = [request_line]
     //
     //        for name, value in request.headers.iteritems():
@@ -251,7 +251,7 @@ class Deproxy {
     if (request.body != null & request.body != "") {
       //            lines.append(request.body)
       writer.write(request.body);
-      log.debug "Sending body, length = ${request.body.length}:"
+      log.debug "Sending body, length = ${request.body.length()}:"
 
     }
     //
