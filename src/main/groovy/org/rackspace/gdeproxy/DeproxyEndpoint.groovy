@@ -309,6 +309,9 @@ class DeproxyEndpoint {
         //                close_connection = True
         closeConnection = true
       }
+
+      // persistent connection are not yet supported. close the connection, no
+      // matter what the headers say.
       //            close_connection = True
       closeConnection = true
       //
@@ -608,6 +611,7 @@ class DeproxyEndpoint {
     //        body = read_body_from_stream(rfile, headers)
     log.debug "reading the body"
     def body = Deproxy.readBody(reader, headers)
+    log.debug("Done reading body, length ${body?.length()}");
     //
     //        logger.debug('returning')
     //        return (Request(method, path, headers, body), persistent_connection)

@@ -67,7 +67,7 @@ class Response {
     this.code = code
     this.message = message.toString()
     this.headers = new HeaderCollection(headers)
-    this.body = body.toString()
+    this.body = ( body ? body.toString() : "" )
   }
 
   @Override

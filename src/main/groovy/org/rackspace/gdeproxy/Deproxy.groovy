@@ -4,6 +4,7 @@ import java.util.UUID
 import java.util.concurrent.locks.ReentrantLock
 import java.net.URI
 import groovy.util.logging.Log4j;
+import org.apache.log4j.Logger;
 
 /**
  * The main class.
@@ -44,12 +45,12 @@ class Deproxy {
   public MessageChain makeRequest(Map params) {
     return makeRequest(
       params?.url,
-      params?.method,
+      params?.method ?: "GET",
       params?.headers,
-      params?.requestBody,
+      params?.requestBody ?: "",
       params?.defaultHandler,
       params?.handlers,
-      params?.addDefaultHeaders
+      params?.addDefaultHeaders ?: true
     );
   }
   public MessageChain makeRequest(
@@ -139,9 +140,9 @@ class Deproxy {
     log.debug "request body: ${requestBody}"
 
     //        if len(request_body) > 0:
-    if (requestBody == null || requestBody.length() < 1) {
+    if (requestBody && requestBody.length() > 0) {
       //            headers.add('Content-Length', len(request_body))
-      headers.add("Content-Length", "0")
+      headers.add("Content-Length", requestBody.length())
     }
     //
     //        if add_default_headers:
@@ -251,9 +252,13 @@ class Deproxy {
     if (request.body != null & request.body != "") {
       //            lines.append(request.body)
       writer.write(request.body);
-      log.debug "Sending body, length = ${request.body.length()}:"
+      log.debug "Sending body, length = ${request.body.length()}"
 
     }
+    else {
+      log.debug("No body to send");
+    }
+
     //
     //        #for line in lines:
     //        # logger.debug(' ' + line)
@@ -271,7 +276,7 @@ class Deproxy {
     //
     //        rfile = s.makefile('rb', -1)
     log.debug "creating socket reader"
-//    def reader = new SocketReader(new CountingInputStream(s.getInputStream()))
+    //    def reader = new SocketReader(new CountingInputStream(s.getInputStream()))
     def reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
     //
     //        logger.debug('Reading response line')
@@ -458,6 +463,8 @@ class Deproxy {
   //
   //def read_body_from_stream(stream, headers):
   static String readBody(reader, headers) {
+    Logger log = Logger.getLogger(Deproxy.class.getName());
+
     //    if ('Transfer-Encoding' in headers and
     //            headers['Transfer-Encoding'] != 'identity'):
     //        # 2
@@ -474,7 +481,8 @@ class Deproxy {
     //        length = int(headers['Content-Length'])
     //        body = stream.read(length)
     if (headers.contains("Content-Length")) {
-      int length = headers.getFirstValue("Content-Length").toInteger()
+      int length = headers.getFirstValue("Content-Length").toInteger();
+      log.debug("Headers contain Content-Length: ${length}")
       //TODO: this is reading characters, but according to the spec, Content-Length is a count of octets.
       char[] data = new char[length]
       int count = reader.read(data, 0, length)
@@ -492,6 +500,7 @@ class Deproxy {
     //        # there is no body
     //        body = None
     //    return body
+    log.debug("Returning null");
     return null
   }
 }
