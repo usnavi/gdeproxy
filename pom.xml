@@ -105,7 +105,7 @@
 
 
     <scm>
-        <connection>scm:git:ssh://git@github.com/richardsartor/gdeproxy.git</connection>
+        <connection>scm:git:ssh://git@github.com/richard-sartor/gdeproxy.git</connection>
     </scm>
 
     <repositories>
