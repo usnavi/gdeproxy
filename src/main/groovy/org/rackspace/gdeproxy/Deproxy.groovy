@@ -38,8 +38,12 @@ class Deproxy {
     //
   }
 
+  public MessageChain makeRequest(String url, Closure<Request> customHandler) {
+      makeRequest(url, "GET", null, "", customHandler)
+  }
+
   public MessageChain makeRequest(String url, String method = "GET", headers = null,
-    String requestBody = "", defaultHandler = null,
+    String requestBody = "", Closure customHandler = null,
     Map<DeproxyEndpoint, Object> handlers = null,
     boolean addDefaultHeaders=true) {
     //    def make_request(self, url, method='GET', headers=None, request_body='',
@@ -101,7 +105,7 @@ class Deproxy {
     //
     //        message_chain = MessageChain(default_handler=default_handler,
     //                                     handlers=handlers)
-    def messageChain = new MessageChain(defaultHandler, handlers)
+    def messageChain = new MessageChain(customHandler, handlers)
     //        self.add_message_chain(request_id, message_chain)
     addMessageChain(requestId, messageChain)
     //
@@ -450,7 +454,8 @@ class Deproxy {
     headers.findAll("Transfer-Encoding").each {
       if (it.value != "identity")
       {
-        throw new UnsupportedOperationException("Non-identity transfer encoding")
+          log.error "Non-identity transfer encoding, not yet supported in GDeproxy.  Unable to read response body."
+          return null
       }
     }
     //    elif 'Content-Length' in headers:

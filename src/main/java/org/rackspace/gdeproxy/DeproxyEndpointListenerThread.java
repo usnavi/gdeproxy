@@ -4,10 +4,12 @@
  */
 package org.rackspace.gdeproxy;
 
+import org.apache.log4j.Logger;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import org.apache.log4j.Logger;
+import java.net.SocketTimeoutException;
 
 /**
  *
@@ -31,13 +33,14 @@ public class DeproxyEndpointListenerThread extends Thread {
   public void run() {
 
     Integer connection = 0;
-//    while (!this.isInterrupted()) {
+    while (!Thread.currentThread().isInterrupted()) {
       try {
+          _socket.setSoTimeout(1000);
 
         Socket conn = _socket.accept();
-        log.debug("Accepted a new connection");
 
-//          conn.setSoTimeout(1000);
+        log.debug("Accepted a new connection");
+          //conn.setSoTimeout(1000);
         log.debug("Creating the handler thread");
         DeproxyEndpointHandlerThread handlerThread = new DeproxyEndpointHandlerThread(_parent, conn, this.getName() + "-connection-" + connection.toString());
         log.debug("Starting the handler thread");
@@ -45,9 +48,11 @@ public class DeproxyEndpointListenerThread extends Thread {
         log.debug("Handler thread started");
         connection++;
 
+      } catch (SocketTimeoutException ste) {
+          // do nothing
       } catch (IOException ex) {
         log.error(null, ex);
       }
-//    }
+    }
   }
 }
