@@ -1,21 +1,11 @@
-package org.rackspace.gdeproxy;
+package org.rackspace.gdeproxy
+import groovy.util.logging.Log4j
+import org.linkedin.util.clock.SystemClock
 
-import java.util.concurrent.locks.ReentrantLock;
-import groovy.util.logging.Log4j;
-import org.linkedin.util.clock.SystemClock;
+import java.text.SimpleDateFormat
+import java.util.concurrent.locks.ReentrantLock
 
-import java.util.logging.Level;
-
-import static org.linkedin.groovy.util.concurrent.GroovyConcurrentUtils.waitForCondition;
-
-import java.io.InputStream;
-import java.net.ServerSocket;
-import java.util.logging.Logger;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Locale;
-import java.util.TimeZone;
-
+import static org.linkedin.groovy.util.concurrent.GroovyConcurrentUtils.waitForCondition
 /**
  * A class that acts as a mock HTTP server.
  */
@@ -126,10 +116,13 @@ class DeproxyEndpoint {
   //
   def processNewConnection(Socket socket) {
     log.debug "processing new connection..."
+
+    def reader
+
     try {
       log.debug "getting reader"
       //SocketReader reader = new SocketReader(new CountingInputStream(socket.getInputStream()));
-      def reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
       log.debug "getting writer"
       //SocketWriter writer = new SocketWriter(new CountingOutputStream(socket.getOutputStream()));
       def writer = new PrintWriter(socket.getOutputStream(), true);

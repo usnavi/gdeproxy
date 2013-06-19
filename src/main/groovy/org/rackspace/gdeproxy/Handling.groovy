@@ -17,7 +17,7 @@ class Handling {
   }
 
     String toString() {
-        sprintf('Handling(endpoint=%r, request=%r, response=%r)', endpoint, request, response)
+        sprintf('Handling(endpoint=%s, request=%s, response=%s)', endpoint, request, response)
     }
 
 }

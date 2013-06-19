@@ -1,13 +1,5 @@
 
-package org.rackspace.gdeproxy;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-
+package org.rackspace.gdeproxy
 /**
  *
  * @author ricahrd-sartor
@@ -34,13 +26,13 @@ class HeaderCollection {
 
   HeaderCollection(HeaderCollection headers){
     for (header in headers._headers) {
-      this.add(new Header(header.Name, header.Value))
+      this.add(new Header(header.name, header.value))
     }
   }
 
   boolean contains(String name) {
     for (Header header : _headers) {
-      if (name.equalsIgnoreCase(header.Name)) {
+      if (name.equalsIgnoreCase(header.name)) {
         return true;
       }
     }
@@ -48,12 +40,10 @@ class HeaderCollection {
     return false;
   }
 
-//  @Override
   public Object each(Closure closure) {
     return _headers.each(closure)
   }
 
-//  @Override
   public Object eachWithIndex(Closure closure) {
     return _headers.eachWithIndex(closure)
   }
@@ -76,7 +66,7 @@ class HeaderCollection {
     def values = []
 
     _headers.each {
-      if (it.Name.equalsIgnoreCase(name)){
+      if (it.name.equalsIgnoreCase(name)){
         values += it.value
       }
     }
@@ -89,7 +79,7 @@ class HeaderCollection {
     ArrayList<Header> toRemove = new ArrayList<Header>();
 
     for (Header header : _headers) {
-      if (name.equalsIgnoreCase(header.Name)) {
+      if (name.equalsIgnoreCase(header.name)) {
         toRemove.add(header);
       }
     }
@@ -100,7 +90,7 @@ class HeaderCollection {
   public String[] getNames() {
     ArrayList<String> names = new ArrayList<String>();
     for (Header header : _headers) {
-      names.add(header.Name);
+      names.add(header.name);
     }
 
     return names.toArray(new String[0]);
@@ -109,7 +99,7 @@ class HeaderCollection {
   public String[] getValues() {
     ArrayList<String> values = new ArrayList<String>();
     for (Header header : _headers) {
-      values.add(header.Value);
+      values.add(header.value);
     }
 
     return values.toArray(new String[0]);
@@ -121,8 +111,8 @@ class HeaderCollection {
 
   public String getFirstValue(String name, String defaultValue=null) {
     for (Header header : _headers) {
-      if (name.equalsIgnoreCase(header.Name)) {
-        return header.Value;
+      if (name.equalsIgnoreCase(header.name)) {
+        return header.value;
       }
     }
 
@@ -149,4 +139,8 @@ class HeaderCollection {
     return headers;
 
   }
+
+    public String toString() {
+        return _headers.toString()
+    }
 }

@@ -1,8 +1,7 @@
 package org.rackspace.gdeproxy
 
-import java.util.UUID
 import java.util.concurrent.locks.ReentrantLock
-import java.net.URI
+
 import groovy.util.logging.Log4j;
 
 /**
@@ -87,7 +86,7 @@ class Deproxy {
     } else if (headers instanceof HeaderCollection) {
       data = new HeaderCollection()
       for (Header header : headers){
-        data.add(header.Name, header.Value)
+        data.add(header.name, header.value)
       }
       headers = data
     }
@@ -220,9 +219,9 @@ class Deproxy {
     log.debug "Sending \"${requestLine}\""
 
     for (Header header : request.headers.getItems()) {
-      writer.write("${header.Name}: ${header.Value}");
+      writer.write("${header.name}: ${header.value}");
       writer.write("\r\n");
-      log.debug "Sending \"${header.Name}: ${header.Value}\""
+      log.debug "Sending \"${header.name}: ${header.value}\""
     }
 
     //        lines.append('\r\n')

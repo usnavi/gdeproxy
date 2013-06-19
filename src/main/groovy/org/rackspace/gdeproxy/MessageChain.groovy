@@ -50,7 +50,8 @@ class MessageChain {
   }
 
   String toString() {
-    sprintf('MessageChain(handler_function=%r, sent_request=%r, handlings=%r, received_response=%r, orphaned_handlings=%r)',
-      handlerFunction, sentRequest, handlings, receivedResponse, orphanedHandlings)
+      // TODO: include handler_function ???
+    sprintf('MessageChain(sent_request=%s, handlings=%s, received_response=%s, orphaned_handlings=%s)',
+      sentRequest, handlings, receivedResponse, orphanedHandlings)
   }
 }
