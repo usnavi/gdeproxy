@@ -14,12 +14,12 @@ package org.rackspace.gdeproxy
  */
 class Header {
 
-  public String name;
-  public String value;
+    public String name;
+    public String value;
 
-  private Header(String name, String value) {
-    name = name;
-    value = value;
-  }
+    private Header(String name, String value) {
+        this.name = name;
+        this.value = value;
+    }
 }
 

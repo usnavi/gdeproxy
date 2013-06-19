@@ -577,7 +577,7 @@ class DeproxyEndpoint {
     //        for k, v in headers.iteritems():
     //            logger.debug(' {0}: "{1}"'.format(k, v))
     headers.each {
-      log.debug "  ${it.Name}: ${it.Value}"
+      log.debug "  ${it.name}: ${it.value}"
     }
     //
     //        persistent_connection = False
@@ -674,7 +674,7 @@ class DeproxyEndpoint {
     //        for name, value in response.headers.iteritems():
     //            wfile.write("%s: %s\r\n" % (name, value))
     response.headers.each {
-      writer.write("${it.Name}: ${it.Value}")
+      writer.write("${it.name}: ${it.value}")
       writer.write("\r\n")
     }
     //        wfile.write("\r\n")

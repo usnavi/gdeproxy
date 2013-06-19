@@ -288,7 +288,7 @@ class Deproxy {
     //        for k,v in response_headers.iteritems():
     //            logger.debug(' %s: %s', k, v)
     headers.each {
-      log.debug "  ${it.Name}: ${it.Value}"
+      log.debug "  ${it.name}: ${it.value}"
     }
 
     //
@@ -440,13 +440,15 @@ class Deproxy {
   //
   //def read_body_from_stream(stream, headers):
   static String readBody(reader, headers) {
+      if (headers == null)
+          return reader
     //    if ('Transfer-Encoding' in headers and
     //            headers['Transfer-Encoding'] != 'identity'):
     //        # 2
     //        logger.debug('NotImplementedError - Transfer-Encoding != identity')
     //        raise NotImplementedError
     headers.findAll("Transfer-Encoding").each {
-      if (it.Value != "identity")
+      if (it.value != "identity")
       {
         throw new UnsupportedOperationException("Non-identity transfer encoding")
       }
