@@ -1,32 +1,38 @@
+package org.rackspace.gdeproxy;
+import groovy.lang.Closure;
 
-package org.rackspace.gdeproxy
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.codehaus.groovy.runtime.DefaultGroovyMethods;
 /**
  *
  * @author ricahrd-sartor
  *
  * A collection class for HTTP Headers. This class combines aspects of a list
  * and a map. Lookup is always case-insenitive. A key can be added multiple
- * times with different values, and all of those values will be kept in the
- * same order as entered.
+ * times with different values, and all of those values will be kept in the same
+ * order as entered.
  *
  */
 class HeaderCollection {
-
 
   List<Header> _headers = new ArrayList<Header>();
 
   HeaderCollection() {
   }
 
-  HeaderCollection(Map<? extends Object, ? extends Object> map){
-    for (entry in map.entrySet) {
-      this.add(entry.getKey().toString(), entry.getValue().toString())
+  HeaderCollection(Map<? extends Object, ? extends Object> map) {
+    for (Map.Entry entry : map.entrySet()) {
+      _headers.add(new Header(entry.getKey().toString(), entry.getValue().toString()));
     }
   }
 
-  HeaderCollection(HeaderCollection headers){
-    for (header in headers._headers) {
-      this.add(new Header(header.name, header.value))
+  HeaderCollection(HeaderCollection headers) {
+    for (Header header : headers._headers) {
+      _headers.add(new Header(header.name, header.value));
     }
   }
 
@@ -41,37 +47,40 @@ class HeaderCollection {
   }
 
   public Object each(Closure closure) {
-    return _headers.each(closure)
+    return DefaultGroovyMethods.each(_headers, closure);
   }
 
   public Object eachWithIndex(Closure closure) {
-    return _headers.eachWithIndex(closure)
+    return DefaultGroovyMethods.eachWithIndex(_headers, closure);
   }
 
   public int size() {
     return _headers.size();
   }
 
+  public void add(Object name, Object value) {
+    add(new Header(name.toString(), value.toString()));
+  }
 
   public void add(String name, String value) {
     add(new Header(name, value));
   }
 
   public void add(Header header) {
-    _headers.add(header)
+    _headers.add(header);
   }
 
-  def findAll(String name) {
+  public List<String> findAll(String name) {
 
-    def values = []
+    List<String> values = new ArrayList<String>();
 
-    _headers.each {
-      if (it.name.equalsIgnoreCase(name)){
-        values += it.value
+    for (Header header : _headers) {
+      if (header.name.equalsIgnoreCase(name)) {
+        values.add(header.value);
       }
     }
 
-    return values
+    return values;
   }
 
   public void deleteAll(String name) {
@@ -109,7 +118,10 @@ class HeaderCollection {
     return _headers.toArray(new Header[0]);
   }
 
-  public String getFirstValue(String name, String defaultValue=null) {
+  public String getFirstValue(String name) {
+    return getFirstValue(name, null);
+  }
+  public String getFirstValue(String name, String defaultValue) {
     for (Header header : _headers) {
       if (name.equalsIgnoreCase(header.name)) {
         return header.value;
@@ -119,7 +131,7 @@ class HeaderCollection {
     return defaultValue;
   }
 
-  public static HeaderCollection fromReader(reader) throws IOException {
+  public static HeaderCollection fromReader(BufferedReader reader) throws IOException {
 
     HeaderCollection headers = new HeaderCollection();
     String line = reader.readLine();
@@ -141,6 +153,6 @@ class HeaderCollection {
   }
 
     public String toString() {
-        return _headers.toString()
+        return _headers.toString();
     }
 }

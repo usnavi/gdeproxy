@@ -1,19 +1,26 @@
 package org.rackspace.gdeproxy
 
 
-class Handler {
+interface Handler {
 
-    // Handler function.
-    // Returns a 200 OK Response, with no additional headers or response body.
-    static def simple_handler(request) {
-        return new Response(200, 'OK')
-    }
+  public abstract Request handleRequest(Request request);
 
-    // Handler function.
-    // Returns a 200 OK Response, with the same headers and body as the request.
-    static def echo_handler(request) {
-        return new Response(200, 'OK', request.headers, request.body)
-    }
+}
+
+class Handlers {
+
+  // Handler function.
+  // Returns a 200 OK Response, with no additional headers or response body.
+  static def simpleHandler(request) {
+    return new Response(200, 'OK')
+  }
+
+  // Handler function.
+  // Returns a 200 OK Response, with the same headers and body as the request.
+  static def echoHandler(request) {
+    return new Response(200, 'OK', request.headers, request.body)
+  }
+}
 
 //  def delay(timeout, next_handler=simple_handler):
 //    """
@@ -71,4 +78,3 @@ class Handler {
 //    return route_to_host
 
 
-}

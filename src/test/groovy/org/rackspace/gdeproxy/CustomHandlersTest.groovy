@@ -5,12 +5,84 @@
 
 package org.rackspace.gdeproxy
 
-/**
- *
- * @author richard-sartor
- */
+import org.junit.*;
+import static org.junit.Assert.*;
+
 class CustomHandlersTest {
 
+  int port;
+  String url;
+  Deproxy deproxy;
+  DeproxyEndpoint endpoint;
+
+  @Before
+  public void setUp() {
+    PortFinder pf = new PortFinder();
+    this.port = pf.getNextOpenPort();
+    this.url = "http://localhost:${this.port}/";
+    this.deproxy = new Deproxy();
+    this.endpoint = this.deproxy.addEndpoint(this.port);
+  }
+
+  @Test
+  public void testCustomHandlerInlineClosure() {
+
+    def mc = this.deproxy.makeRequest(url:this.url,
+      defaultHandler: { request ->
+        new Response(
+          606,
+          "Spoiler",
+          ["Header-Name": "Header-Value"],
+          "Snape kills Dumbledore");
+      });
+
+    assertEquals(1, mc.handlings.size());
+    assertEquals("606", mc.handlings[0].response.code);
+    assertEquals("606", mc.receivedResponse.code);
+  }
+
+  def customHandlerMethod(request) {
+    new Response(
+      606,
+      "Spoiler",
+      ["Header-Name": "Header-Value"],
+      "Snape kills Dumbledore");
+  }
+
+  @Test
+  public void testCustomHandlerMethod() {
+    def mc = this.deproxy.makeRequest(url:this.url,
+      defaultHandler: this.&customHandlerMethod);
+
+    assertEquals(1, mc.handlings.size());
+    assertEquals("606", mc.handlings[0].response.code);
+    assertEquals("606", mc.receivedResponse.code);
+  }
+
+  public static Response customHandlerStaticMethod(Request request) {
+    return new Response(
+      606,
+      "Spoiler",
+      ["Header-Name": "Header-Value"],
+      "Snape kills Dumbledore");
+  }
+
+  @Test
+  public void testCustomHandlerStaticMethod() {
+    def mc = this.deproxy.makeRequest(url:this.url,
+      defaultHandler: CustomHandlersTest.&customHandlerStaticMethod);
+
+    assertEquals(1, mc.handlings.size());
+    assertEquals("606", mc.handlings[0].response.code);
+    assertEquals("606", mc.receivedResponse.code);
+  }
+
+  @After
+  public void tearDown() {
+    if (this.deproxy) {
+      this.deproxy.shutdown();
+    }
+  }
 }
 
 

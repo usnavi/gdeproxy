@@ -3,6 +3,7 @@ package org.rackspace.gdeproxy
 import java.util.concurrent.locks.ReentrantLock
 
 import groovy.util.logging.Log4j;
+import org.apache.log4j.Logger;
 
 /**
  * The main class.
@@ -13,13 +14,15 @@ class Deproxy {
   //    """The main class."""
   //
 
-  public static final String REQUEST_ID_HEADER_NAME = 'Deproxy-Request-ID';
+  public static final String REQUEST_ID_HEADER_NAME = "Deproxy-Request-ID";
   def _messageChainsLock = new ReentrantLock()
   def _messageChains = [:]
   def _endpointLock = new ReentrantLock()
   def _endpoints = []
   def _defaultHandler = null
 
+  public static final String VERSION = "0.9";
+  public static final String VERSION_STRING = String.format("gdeproxy %s", VERSION);
 
   Deproxy(defaultHandler = null) {
 
@@ -38,14 +41,25 @@ class Deproxy {
     //
   }
 
-  public MessageChain makeRequest(String url, Closure<Request> customHandler) {
-      makeRequest(url, "GET", null, "", customHandler)
+  public MessageChain makeRequest(Map params) {
+    return makeRequest(
+      params?.url,
+      params?.method ?: "GET",
+      params?.headers,
+      params?.requestBody ?: "",
+      params?.defaultHandler,
+      params?.handlers,
+      params?.addDefaultHeaders ?: true
+    );
   }
-
-  public MessageChain makeRequest(String url, String method = "GET", headers = null,
-    String requestBody = "", Closure customHandler = null,
-    Map<DeproxyEndpoint, Object> handlers = null,
-    boolean addDefaultHeaders=true) {
+  public MessageChain makeRequest(
+    String url,
+    String method="GET",
+    headers=null,
+    String requestBody="",
+    defaultHandler=null,
+    handlers=null,
+    addDefaultHeaders=true) {
     //    def make_request(self, url, method='GET', headers=None, request_body='',
     //                     default_handler=None, handlers=None,
     //                     add_default_headers=True):
@@ -79,6 +93,7 @@ class Deproxy {
     //            headers = HeaderCollection()
     //        else:
     //            headers = HeaderCollection(headers)
+    def data
     if (headers == null) {
       headers = new HeaderCollection()
     } else if (headers instanceof Map) {
@@ -105,7 +120,7 @@ class Deproxy {
     //
     //        message_chain = MessageChain(default_handler=default_handler,
     //                                     handlers=handlers)
-    def messageChain = new MessageChain(customHandler, handlers)
+    def messageChain = new MessageChain(defaultHandler, handlers)
     //        self.add_message_chain(request_id, message_chain)
     addMessageChain(requestId, messageChain)
     //
@@ -125,9 +140,9 @@ class Deproxy {
     log.debug "request body: ${requestBody}"
 
     //        if len(request_body) > 0:
-    if (requestBody == null || requestBody.length() < 1) {
+    if (requestBody && requestBody.length() > 0) {
       //            headers.add('Content-Length', len(request_body))
-      headers.add("Content-Length", "0")
+      headers.add("Content-Length", requestBody.length())
     }
     //
     //        if add_default_headers:
@@ -151,7 +166,7 @@ class Deproxy {
       //            if 'User-Agent' not in headers:
       //                headers.add('User-Agent', version_string)
       if (!headers.contains("User-Agent")){
-        headers.add("User-Agent", "TODO: versionString")
+        headers.add("User-Agent", VERSION_STRING)
       }
       //
     }
@@ -197,7 +212,7 @@ class Deproxy {
     def hostIP = InetAddress.getByName(host)
     //
     //        request_line = '%s %s HTTP/1.1\r\n' % (request.method, request.path)
-    def requestLine = String.format("%s %s HTTP/1.1", request.method, request.path)
+    def requestLine = String.format("%s %s HTTP/1.1", request.method, request.path ?: "/")
     //        lines = [request_line]
     //
     //        for name, value in request.headers.iteritems():
@@ -237,9 +252,13 @@ class Deproxy {
     if (request.body != null & request.body != "") {
       //            lines.append(request.body)
       writer.write(request.body);
-      log.debug "Sending body, length = ${request.body.length}:"
+      log.debug "Sending body, length = ${request.body.length()}"
 
     }
+    else {
+      log.debug("No body to send");
+    }
+
     //
     //        #for line in lines:
     //        # logger.debug(' ' + line)
@@ -257,7 +276,7 @@ class Deproxy {
     //
     //        rfile = s.makefile('rb', -1)
     log.debug "creating socket reader"
-//    def reader = new SocketReader(new CountingInputStream(s.getInputStream()))
+    //    def reader = new SocketReader(new CountingInputStream(s.getInputStream()))
     def reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
     //
     //        logger.debug('Reading response line')
@@ -444,8 +463,12 @@ class Deproxy {
   //
   //def read_body_from_stream(stream, headers):
   static String readBody(reader, headers) {
+  
       if (headers == null)
-          return reader
+          return null
+          
+    Logger log = Logger.getLogger(Deproxy.class.getName());
+
     //    if ('Transfer-Encoding' in headers and
     //            headers['Transfer-Encoding'] != 'identity'):
     //        # 2
@@ -463,7 +486,8 @@ class Deproxy {
     //        length = int(headers['Content-Length'])
     //        body = stream.read(length)
     if (headers.contains("Content-Length")) {
-      int length = headers.getFirstValue("Content-Length").toInteger()
+      int length = headers.getFirstValue("Content-Length").toInteger();
+      log.debug("Headers contain Content-Length: ${length}")
       //TODO: this is reading characters, but according to the spec, Content-Length is a count of octets.
       char[] data = new char[length]
       int count = reader.read(data, 0, length)
@@ -481,6 +505,7 @@ class Deproxy {
     //        # there is no body
     //        body = None
     //    return body
+    log.debug("Returning null");
     return null
   }
 }

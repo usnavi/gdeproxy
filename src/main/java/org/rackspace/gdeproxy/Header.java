@@ -3,11 +3,11 @@
  * and open the template in the editor.
  */
 
-package org.rackspace.gdeproxy
+package org.rackspace.gdeproxy;
 
 /**
  *
- * @author ricahrd-sartor
+ * @author richard-sartor
  *
  * A simple name-value pair.
  *
@@ -17,7 +17,7 @@ class Header {
     public String name;
     public String value;
 
-    private Header(String name, String value) {
+  public Header(String name, String value) {
         this.name = name;
         this.value = value;
     }

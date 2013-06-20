@@ -47,7 +47,7 @@ class Response {
     //        if headers is None:
     //            headers = {}
     if (headers == null) {
-      headers = HeaderCollection.newInstance()
+      headers = new HeaderCollection ()
     }
     //
     //        if body is None:
@@ -63,7 +63,7 @@ class Response {
     this.code = code
     this.message = message.toString()
     this.headers = new HeaderCollection(headers)
-    this.body = body.toString()
+    this.body = ( body ? body.toString() : "" )
   }
 
   @Override

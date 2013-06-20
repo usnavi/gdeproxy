@@ -74,7 +74,7 @@ class DeproxyEndpoint {
     //        self.default_handler = default_handler
     _defaultHandler = defaultHandler
     //
-        serverThread = new Thread("Thread-${name}")
+    serverThread = new Thread("Thread-${name}")
 
     //    serverThread = Thread.startDaemon("Thread-${name}") {
     serverSocket = new ServerSocket(port)
@@ -116,8 +116,8 @@ class DeproxyEndpoint {
   //
   def processNewConnection(Socket socket) {
     log.debug "processing new connection..."
-
-    def reader
+    def reader;
+    def writer;
 
     try {
       log.debug "getting reader"
@@ -125,7 +125,7 @@ class DeproxyEndpoint {
       reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
       log.debug "getting writer"
       //SocketWriter writer = new SocketWriter(new CountingOutputStream(socket.getOutputStream()));
-      def writer = new PrintWriter(socket.getOutputStream(), true);
+      writer = new PrintWriter(socket.getOutputStream(), true);
       try {
         log.debug "starting loop"
         def close = false
@@ -137,7 +137,7 @@ class DeproxyEndpoint {
         }
         log.debug "ending loop"
       } catch (RuntimeException e) {
-        log.error("there was an error ", e)
+        log.error("there was an error", e)
         sendResponse(writer,
           new Response(500, "Internal Server Error", null,
                 "The server encountered an unexpected condition which prevented it from fulfilling the request."))
@@ -145,10 +145,10 @@ class DeproxyEndpoint {
 
     } finally {
 
-      //      socket.shutdownInput()
-      //      socket.shutdownOutput()
-        reader.close()
-        socket.close()
+      //socket.shutdownInput()
+      //socket.shutdownOutput()
+      //reader.close()
+      //socket.close()
     }
 
     log.debug "done processing"
@@ -300,6 +300,9 @@ class DeproxyEndpoint {
         //                close_connection = True
         closeConnection = true
       }
+
+      // persistent connection are not yet supported. close the connection, no
+      // matter what the headers say.
       //            close_connection = True
       closeConnection = true
       //
@@ -364,7 +367,7 @@ class DeproxyEndpoint {
 
       } else {
 
-        handler = Handler.&simple_handler
+        handler = Handlers.&simpleHandler
 
       }
       //
@@ -407,7 +410,7 @@ class DeproxyEndpoint {
       //                logger.debug('Don\'t add default response headers.')
       if (addDefaultHeaders){
         if (!response.headers.contains("Server")) {
-          response.headers.add("Server", "TODO: versionString")
+          response.headers.add("Server", Deproxy.VERSION_STRING)
         }
         if (!response.headers.contains("Date")) {
           response.headers.add("Date", datetimeString())
@@ -480,14 +483,14 @@ class DeproxyEndpoint {
     //        if not request_line:
     //            return ()
     if (!requestLine){
-        log.debug "request line is null: ${requestLine}"
+      log.debug "request line is null: ${requestLine}"
 
       return []
     }
     //
     //        request_line = request_line.rstrip('\r\n')
     //        logger.debug('request line is ok: "%s"' % request_line)
-    log.debug "request line is ok: ${requestLine}"
+    log.debug "request line is not null: ${requestLine}"
     //
     //        if request_line[-2:] == '\r\n':
     //            request_line = request_line[:-2]
@@ -599,6 +602,7 @@ class DeproxyEndpoint {
     //        body = read_body_from_stream(rfile, headers)
     log.debug "reading the body"
     def body = Deproxy.readBody(reader, headers)
+    log.debug("Done reading body, length ${body?.length()}");
     //
     //        logger.debug('returning')
     //        return (Request(method, path, headers, body), persistent_connection)
