@@ -98,7 +98,7 @@ class Deproxy {
       headers = new HeaderCollection()
     } else if (headers instanceof Map) {
       data = new HeaderCollection()
-      for (String key : headers.getKeys()) {
+      for (String key : headers.keySet()) {
         data.add(key, headers[key])
       }
       headers = data
@@ -118,7 +118,7 @@ class Deproxy {
       headers.add(REQUEST_ID_HEADER_NAME, requestId)
     }
     //
-    //        message_chain = MessageChain(default_handler=default_handler,
+    //        message_chain = MessageChain(default_handler=defadult_handler,
     //                                     handlers=handlers)
     def messageChain = new MessageChain(defaultHandler, handlers)
     //        self.add_message_chain(request_id, message_chain)
